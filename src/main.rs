@@ -13,7 +13,11 @@ pub fn main() {
         if let Some(unwrapped_image) = image {
             println!("saving...");
             let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-            unwrapped_image.save(format!("./test{}.png", timestamp)).expect("failed to save image");
+            let filename = format!("./test{}.png", timestamp);
+            unwrapped_image.save(&filename).expect("failed to save image");
+            
+            let recognized = tesseract::ocr(&filename, "jpn").unwrap();
+            println!("recognized: {}", recognized);
         } else {
             //println!("Oops, no image");
         }

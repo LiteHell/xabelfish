@@ -152,9 +152,6 @@ pub fn pipewire_thread(
                     // copy frame data to screen
                     let data = &mut datas[0];
                     let stride = data.chunk().stride();
-                    println!("got a frame of size {}", data.chunk().size());
-                    println!("stide: {}", stride);
-                    println!("offset: {}", data.chunk().offset());
 
                     let timestamp = time::SystemTime::now();
                     *(video_data_lock.write().unwrap()) = PipewireVideoData {
