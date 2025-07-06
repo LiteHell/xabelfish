@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+deepl = "0.6.5"
 image = "0.25.6"
 pipewire = "0.8.0"
 portal-screencast = "0.1.0"
 tempfile = "3.20.0"
 tesseract = "0.15.2"
+tokio = "1.46.1"
 yuv = "0.8.5"
