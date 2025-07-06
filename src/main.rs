@@ -1,4 +1,4 @@
-use std::time::SystemTime;
+use std::{io, time::SystemTime};
 
 use crate::screen_capture::Capture;
 
@@ -12,12 +12,13 @@ pub fn main() {
         let image = pipewire_capture.get_captured_image();
         if let Some(unwrapped_image) = image {
             println!("saving...");
-            let timestamp = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis();
-            let filename = format!("./test{}.png", timestamp);
-            unwrapped_image.save(&filename).expect("failed to save image");
+            let filename = tempfile::NamedTempFile::with_suffix(".png").expect("Failed to create temp image file");
+            unwrapped_image.save(&filename.path()).expect("failed to save image");
             
-            let recognized = tesseract::ocr(&filename, "jpn").unwrap();
+            // TO-DO: Add support of EasyOCR
+            let recognized = tesseract::ocr(&filename.path().to_str().unwrap(), "jpn").unwrap();
             println!("recognized: {}", recognized);
+            std::fs::remove_file(filename).expect("Failed to delete file");
         } else {
             //println!("Oops, no image");
         }
