@@ -1227,20 +1227,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "241eaef5fd12c88705a01fc1066c48c4b36e0dd4377dcdc7ec3942cea7a69956"
 
 [[package]]
-name = "livetrans"
-version = "0.1.0"
-dependencies = [
- "deepl",
- "image",
- "pipewire",
- "portal-screencast",
- "tempfile",
- "tesseract",
- "tokio",
- "yuv",
-]
-
-[[package]]
 name = "log"
 version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1253,6 +1239,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fae87c125b03c1d2c0150c90365d7d6bcc53fb73a9acaef207d2d065860f062"
 dependencies = [
  "imgref",
+]
+
+[[package]]
+name = "lugata"
+version = "0.1.0"
+dependencies = [
+ "deepl",
+ "image",
+ "pipewire",
+ "portal-screencast",
+ "tempfile",
+ "tesseract",
+ "tokio",
+ "yuv",
 ]
 
 [[package]]
