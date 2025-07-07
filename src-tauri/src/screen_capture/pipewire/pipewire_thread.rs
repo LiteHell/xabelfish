@@ -6,8 +6,7 @@
 //! tut: https://docs.pipewire.org/page_tutorial5.html
 
 use std::{
-    sync::{Arc, Once, RwLock, mpsc},
-    thread,
+    sync::{Arc, RwLock},
     time::{self, SystemTime},
 };
 
