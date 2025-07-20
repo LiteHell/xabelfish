@@ -10,6 +10,7 @@ use crate::{
 
 pub struct LugataEngine {
     capture: Option<Arc<Mutex<pipewire::PipeWireScreenCapture>>>,
+    translation_cache: Option<(String, String)>,
     ocr_thread: Option<JoinHandle<()>>,
     stopper: Option<Arc<RwLock<bool>>>,
 }
@@ -20,6 +21,7 @@ impl LugataEngine {
             capture: None,
             ocr_thread: None,
             stopper: None,
+            translation_cache: None,
         }
     }
 
@@ -36,8 +38,15 @@ impl LugataEngine {
     pub async fn translate_ocr(&mut self) -> Option<String> {
         let translator = deepl::DeepLTranslator::new();
         let ocr = self.process_ocr();
+
         if let Some(ocr) = ocr {
-            let translated = translator.translate(ocr, Some("ja"), "ko").await;
+            if let Some(cache) = &self.translation_cache {
+                if cache.0.eq(&ocr) {
+                    return Some(cache.1.clone());
+                }
+            }
+            let translated = translator.translate(&ocr, Some("ja"), "ko").await;
+            self.translation_cache = Some((ocr.clone(), translated.clone()));
             Some(translated.to_string())
         } else {
             None
