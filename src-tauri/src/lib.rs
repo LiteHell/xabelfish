@@ -51,9 +51,8 @@ pub fn run() {
                                     let _ = handle.emit("translated", i);
                                 } else {
                                 }
-
-                                thread::sleep(Duration::from_millis(2));
                             }
+                            thread::sleep(Duration::from_millis(2));
                         }
                     });
 
