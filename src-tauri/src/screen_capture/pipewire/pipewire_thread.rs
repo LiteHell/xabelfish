@@ -19,6 +19,9 @@ use spa::pod::Pod;
 
 use crate::screen_capture::Capture;
 
+// Simple struct to tell pipewire to terminate
+pub struct PipewireTerminate {}
+
 struct UserData {
     format: spa::param::video::VideoInfoRaw,
 }
@@ -77,6 +80,7 @@ pub fn pipewire_thread(
     screen: ActiveScreenCast,
     video_info_lock: Arc<RwLock<PipewireVideoInfo>>,
     video_data_lock: Arc<RwLock<PipewireVideoData>>,
+    pw_receiver: pipewire::channel::Receiver<PipewireTerminate>,
 ) {
     pw::init();
     let mainloop =
@@ -89,6 +93,11 @@ pub fn pipewire_thread(
     let data = UserData {
         format: Default::default(),
     };
+
+    let _receiver = pw_receiver.attach(mainloop.loop_(), {
+        let mainloop = mainloop.clone();
+        move |_| mainloop.quit()
+    });
 
     let stream = pw::stream::Stream::new(
         &core,

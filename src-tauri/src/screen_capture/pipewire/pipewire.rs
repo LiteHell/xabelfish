@@ -6,7 +6,7 @@
 //! tut: https://docs.pipewire.org/page_tutorial5.html
 
 use std::{
-    sync::{Arc, Once, RwLock, mpsc},
+    sync::{mpsc, Arc, Once, RwLock},
     thread::{self, JoinHandle},
     time::SystemTime,
 };
@@ -19,15 +19,14 @@ use pw::{properties::properties, spa};
 use spa::pod::Pod;
 
 use crate::screen_capture::{
+    pipewire::pipewire_thread::{self, PipewireTerminate, PipewireVideoData, PipewireVideoInfo},
     Capture,
-    pipewire::pipewire_thread::{self, PipewireVideoData, PipewireVideoInfo},
 };
 
-pub fn select_window() -> ActiveScreenCast {
-    let screen_cast = portal_screencast::ScreenCast::new()
-        .expect("Failed to initialize xdg-portal-screencast session");
-    let selected = screen_cast.start(None).expect("Failed to select share");
-    selected
+pub fn select_window() -> Result<ActiveScreenCast, PortalError> {
+    let screen_cast = portal_screencast::ScreenCast::new()?;
+    let selected = screen_cast.start(None)?;
+    Ok(selected)
 }
 
 // https://gstreamer.freedesktop.org/documentation/additional/design/mediatype-video-raw.html?gi-language=c
@@ -45,7 +44,6 @@ fn normalize_to_rgba(video_format: VideoFormat, data: &mut [u8]) -> (u8, u8, u8,
         ),
     }
 }
-
 
 fn get_pixel_size(video_format: VideoFormat) -> u8 {
     match video_format {
@@ -65,18 +63,27 @@ fn get_pixel_size(video_format: VideoFormat) -> u8 {
 pub struct PipeWireScreenCapture {
     screen_info: Option<Arc<RwLock<PipewireVideoInfo>>>,
     screen_data: Option<Arc<RwLock<PipewireVideoData>>>,
+    pw_sender: Option<Arc<RwLock<pipewire::channel::Sender<PipewireTerminate>>>>,
 }
 
 impl Drop for PipeWireScreenCapture {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        if let Some(sender) = &self.pw_sender {
+            sender.write().unwrap().send(PipewireTerminate {});
+        }
+    }
 }
 
 impl Capture for PipeWireScreenCapture {
     fn new() -> Self {
-        Self {screen_data: None, screen_info: None}
+        Self {
+            screen_data: None,
+            screen_info: None,
+            pw_sender: None,
+        }
     }
 
-    fn start_capture(&mut self) {
+    fn start_capture(&mut self) -> Result<(), ()> {
         let screen_info: Arc<RwLock<PipewireVideoInfo>> =
             Arc::new(RwLock::new(PipewireVideoInfo::empty()));
         let screen_data: Arc<RwLock<PipewireVideoData>> =
@@ -87,21 +94,30 @@ impl Capture for PipeWireScreenCapture {
             self.screen_data = Some(data_cloned);
             self.screen_info = Some(info_cloned);
         }
-        let handle ={
+        let _handle = {
             let info_cloned = screen_info.clone();
             let data_cloned = screen_data.clone();
-        
-             thread::spawn(move || {
-                let screen_share = select_window();
+            let (pw_sender, pw_receiver) = pipewire::channel::channel();
+            self.pw_sender = Some(Arc::new(RwLock::new(pw_sender.clone())));
+
+            let screen_share = select_window().or_else(|_| Err(()))?;
+            thread::spawn(move || {
                 let pipewire_thread = {
                     thread::spawn(move || {
-                        pipewire_thread::pipewire_thread(screen_share, info_cloned, data_cloned);
+                        pipewire_thread::pipewire_thread(
+                            screen_share,
+                            info_cloned,
+                            data_cloned,
+                            pw_receiver,
+                        );
                     })
                 };
 
-                pipewire_thread.join();
+                let _ = pipewire_thread.join();
             })
         };
+
+        Ok(())
     }
 
     fn get_captured_image(&mut self) -> Option<RgbaImage> {
@@ -112,7 +128,7 @@ impl Capture for PipeWireScreenCapture {
             let info = self.screen_info.as_ref().unwrap().read().unwrap().clone();
 
             if (data.is_empty() || info.is_empty()) {
-                return None
+                return None;
             }
 
             let mut buffer = data.data.clone();
@@ -126,14 +142,21 @@ impl Capture for PipeWireScreenCapture {
                 let line_start = (data.offset as i32 + data.stride * y as i32) as u32;
                 for x in 0..width {
                     let pixel_offset = (line_start + pixel_size as u32 * x) as usize;
-                    let pixels = normalize_to_rgba(info.format, &mut buffer.as_mut_slice()[pixel_offset..]);
+                    let pixels =
+                        normalize_to_rgba(info.format, &mut buffer.as_mut_slice()[pixel_offset..]);
                     let pixels_slice = [pixels.0, pixels.1, pixels.2, pixels.3];
 
                     image.put_pixel(x, y, Rgba::from(pixels_slice));
                 }
             }
 
-            println!("Image data timestamp: {}", data.timestamp.duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis());
+            println!(
+                "Image data timestamp: {}",
+                data.timestamp
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap()
+                    .as_millis()
+            );
             Some(image)
         }
     }

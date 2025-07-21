@@ -26,13 +26,12 @@ impl LugataEngine {
     }
 
     pub fn select_window(&mut self) {
-        if (self.capture.is_some()) {
-            // Do some dropping here
-        }
-
         let mut capture = pipewire::PipeWireScreenCapture::new();
-        capture.start_capture();
-        self.capture = Some(Arc::new(Mutex::new(capture)));
+        let start_capture_result = capture.start_capture();
+
+        if start_capture_result.is_ok() {
+            self.capture = Some(Arc::new(Mutex::new(capture)));
+        }
     }
 
     pub async fn translate_ocr(&mut self) -> Option<String> {
