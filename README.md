@@ -2,8 +2,9 @@
 *ni**X** b**abelFish**
 
 This is a live translator for some visual novel game players who use unix-like operating systems.
+This software is hard-coded for japanese game. Change it if you want.
 
-This software is hard-typed for japanese game. Change it if you want.
+You need to add `DEEPL_API_KEY` environment variable (Get one from DeepL). It will panic if there's no `DEEPL_API_KEY` variable. (I'll change it in future...)
 
 ## Requirements
 - Tesseract
@@ -16,6 +17,17 @@ This software is hard-typed for japanese game. Change it if you want.
 1. Install node.js
 1. Install [pnpm](https://pnpm.io/)
 1. Run `pnpm tauri build`
+
+## TO-DO
+- [ ] Support other OCR engines
+  - [ ] EasyOCR
+  - [ ] ppocr?
+- [ ] Add tessearact source lanaguge (currently hard-coded to `jpn`)
+- [ ] Add translator option (target language, source language)
+- [ ] Add font settings
+- [ ] Add support for other translating engines
+  - [ ] LibreTranslate
+- [ ] Add image-to-image translation
 
 ## License
 XabelFish - Game translator for Unix-like operating systems
