@@ -19,6 +19,7 @@ This software is hard-typed for japanese game. Change it if you want.
 
 ## License
 XabelFish - Game translator for Unix-like operating systems
+<br>
 Copyright (C) 2025 Yeonjin Shin (a.k.a. LiteHell)
 
 This program is free software: you can redistribute it and/or modify
