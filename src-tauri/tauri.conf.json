@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "lugata",
+  "productName": "xabelfish",
   "version": "0.1.0",
   "identifier": "info.litehell.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "lugata",
+        "title": "xabelfish",
         "width": 800,
         "height": 600
       }

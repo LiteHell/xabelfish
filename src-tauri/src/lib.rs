@@ -15,7 +15,7 @@ mod translate;
 #[tauri::command]
 fn set_window(app: AppHandle) {
     let cloned_app = app.clone();
-    let engine_state = cloned_app.state::<Arc<Mutex<engine::LugataEngine>>>();
+    let engine_state = cloned_app.state::<Arc<Mutex<engine::XabelFishEngine>>>();
     {
         println!("Trying to acquire lock");
         let mut engine = engine_state.lock().unwrap();
@@ -28,7 +28,7 @@ fn set_window(app: AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            let engine = Mutex::new(engine::LugataEngine::new());
+            let engine = Mutex::new(engine::XabelFishEngine::new());
             let arc = Arc::new(engine);
             app.manage(arc.clone());
 

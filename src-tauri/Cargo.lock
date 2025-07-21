@@ -2577,25 +2577,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lugata"
-version = "0.1.0"
-dependencies = [
- "deepl",
- "image",
- "pipewire",
- "portal-screencast",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tempfile",
- "tesseract",
- "tokio",
- "yuv",
-]
-
-[[package]]
 name = "mac"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6256,6 +6237,25 @@ dependencies = [
  "libc",
  "once_cell",
  "pkg-config",
+]
+
+[[package]]
+name = "xabelfish"
+version = "0.1.0"
+dependencies = [
+ "deepl",
+ "image",
+ "pipewire",
+ "portal-screencast",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "tempfile",
+ "tesseract",
+ "tokio",
+ "yuv",
 ]
 
 [[package]]

@@ -8,16 +8,16 @@ use crate::{
     translate::{deepl, Translator},
 };
 
-pub struct LugataEngine {
+pub struct XabelFishEngine {
     capture: Option<Arc<Mutex<pipewire::PipeWireScreenCapture>>>,
     translation_cache: Option<(String, String)>,
     ocr_thread: Option<JoinHandle<()>>,
     stopper: Option<Arc<RwLock<bool>>>,
 }
 
-impl LugataEngine {
+impl XabelFishEngine {
     pub fn new() -> Self {
-        LugataEngine {
+        XabelFishEngine {
             capture: None,
             ocr_thread: None,
             stopper: None,

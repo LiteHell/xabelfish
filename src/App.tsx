@@ -1,5 +1,4 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
 import "./message.css";
 import { listen } from "@tauri-apps/api/event";
@@ -7,10 +6,10 @@ import { listen } from "@tauri-apps/api/event";
 function App() {
   const [translated, setTranslated] = useState<string | null>(null);
   listen<string>("translated", (e) => setTranslated(e.payload));
-  
+
   const setWindow = () => {
-    invoke('set_window');
-  }
+    invoke("set_window");
+  };
 
   return (
     <main>
@@ -20,9 +19,7 @@ function App() {
           <li>Settings</li>
         </ul>
       </nav>
-      <article>
-        { translated ?? 'Hello, Lugata!' }
-      </article>
+      <article>{translated ?? "Hello, XabelFish!"}</article>
     </main>
   );
 }
