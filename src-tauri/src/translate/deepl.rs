@@ -1,8 +1,6 @@
-use std::process::Output;
-
 use deepl::{DeepLApi, Lang};
 
-use crate::translate::Translator;
+use crate::{config::get_xabelfish_config, translate::Translator};
 
 pub struct DeepLTranslator {
 
@@ -28,7 +26,7 @@ impl Translator for DeepLTranslator {
     }
     
     async fn translate(&self, text: impl ToString, source_language: Option<impl ToString>, target_language: impl ToString) -> String {
-        let client = DeepLApi::with(std::env::var("DEEPL_API_KEY").expect("No deepl api key provided").as_str()).new();
+        let client = DeepLApi::with(&get_xabelfish_config().deepl_api_key).new();
         let result = client.translate_text(text, Lang::KO).await.unwrap();
         result.translations.iter().map(|x| x.text.clone()).reduce( |acc, i| acc + i.as_str()).unwrap_or(String::new())
     }

@@ -8,9 +8,22 @@ use std::{
 
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::config::{get_xabelfish_config, set_xabelfish_config, XabelFishConfig};
+
 mod engine;
 mod screen_capture;
 mod translate;
+mod config;
+
+#[tauri::command]
+fn get_config() -> XabelFishConfig {
+    get_xabelfish_config()
+}
+
+#[tauri::command]
+fn set_config(config: XabelFishConfig) {
+    set_xabelfish_config(config);
+}
 
 #[tauri::command]
 fn set_window(app: AppHandle) {
@@ -63,7 +76,7 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![set_window])
+        .invoke_handler(tauri::generate_handler![set_window, get_config, set_config])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

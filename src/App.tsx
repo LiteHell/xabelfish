@@ -21,6 +21,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.`);
 };
 
+type XabelFishConfig = {
+  deepl_api_key: string;
+};
+
 function App() {
   const [translated, setTranslated] = useState<string | null>(null);
   listen<string>("translated", (e) => setTranslated(e.payload));
@@ -29,12 +33,34 @@ function App() {
     invoke("set_window");
   };
 
+  const setConfig = () => {
+    invoke<XabelFishConfig>("get_config").then((config) => {
+      const newDeepLApiKey = prompt(
+        "DeepL API Key?\n(NOTE: Settings is development in progress....)",
+        config.deepl_api_key
+      );
+      if (newDeepLApiKey !== null) {
+        const newConfig: XabelFishConfig = {
+          ...config,
+          deepl_api_key: newDeepLApiKey,
+        };
+
+        invoke("set_config", { config: newConfig })
+          .then(() => alert("Done"))
+          .catch((err) => {
+            alert("Oops, somethings's wrong");
+            console.error(err);
+          });
+      }
+    });
+  };
+
   return (
     <main>
       <nav>
         <ul>
           <li onClick={setWindow}>Select window/area</li>
-          <li onClick={() => alert("Development in progress...")}>Settings</li>
+          <li onClick={setConfig}>Settings</li>
           <li onClick={displayLicense}>License</li>
         </ul>
       </nav>
