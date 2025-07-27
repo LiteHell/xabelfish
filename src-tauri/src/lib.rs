@@ -52,11 +52,11 @@ pub fn run() {
                                 } else {
                                 }
                             }
+
+                            // Prevent race condition with select window menu
                             thread::sleep(Duration::from_millis(2));
                         }
                     });
-
-                    // Prevent race condition with select window menu
                 });
             }
 
