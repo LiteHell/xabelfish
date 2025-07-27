@@ -4,7 +4,7 @@
 This is a live translator for some visual novel game players who use unix-like operating systems.
 This software is hard-coded for japanese game. Change it if you want.
 
-You need to add `DEEPL_API_KEY` environment variable (Get one from DeepL). It will panic if there's no `DEEPL_API_KEY` variable. (I'll change it in future...)
+You need to change DeepL API Key with Settings menu.
 
 ## Requirements
 - Tesseract
