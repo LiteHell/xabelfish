@@ -8,6 +8,7 @@ export type XabelFishConfig = {
   font_size: number;
   background_color: string;
   font_color: string;
+  tesseract_language: string;
 };
 
 type XabelFishConfigStore = {
@@ -25,6 +26,7 @@ export const EmptyXabelFishConfig: XabelFishConfig = Object.freeze({
   font_size: 30,
   background_color: "#00000011",
   font_color: "#ffffffff",
+  tesseract_language: "jpn",
 });
 
 const useXabelFishConfigStore = create<XabelFishConfigStore>((set, get) => ({

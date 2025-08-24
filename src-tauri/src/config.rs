@@ -7,7 +7,7 @@ use std::{
 };
 
 use dirs::config_dir;
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 
 mod default_values;
 
@@ -22,6 +22,8 @@ pub struct XabelFishConfig {
     pub background_color: String,
     #[serde(default = "default_values::default_font_color")]
     pub font_color: String,
+    #[serde(default = "default_values::default_tesseract_language")]
+    pub tesseract_language: String,
 }
 
 impl XabelFishConfig {
@@ -32,6 +34,7 @@ impl XabelFishConfig {
             font_size: default_values::default_font_size(),
             background_color: default_values::default_background_color(),
             font_color: default_values::default_font_color(),
+            tesseract_language: default_values::default_tesseract_language(),
         }
     }
 }
@@ -58,6 +61,7 @@ fn read_xabelfish_config() -> XabelFishConfig {
         let deserialized = toml::from_str::<XabelFishConfig>(&config_file_content.as_str());
 
         if let Ok(deserialized) = deserialized {
+            println!("deserialized config: {:#?}", deserialized);
             return deserialized;
         }
     }

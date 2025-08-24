@@ -5,6 +5,7 @@ use std::{
 };
 
 use crate::{
+    get_config,
     screen_capture::{pipewire::pipewire, Capture},
     translate::{deepl, Translator},
 };
@@ -77,7 +78,10 @@ impl XabelFishEngine {
         if let Some(image) = image_option {
             let tempfile = tempfile::NamedTempFile::with_suffix(".png").unwrap();
             image.save(&tempfile).expect("Failed to save image");
-            let ocr = tesseract::ocr(&tempfile.path().to_str().unwrap(), "jpn");
+            let ocr = tesseract::ocr(
+                &tempfile.path().to_str().unwrap(),
+                get_config().tesseract_language.as_str(),
+            );
             let processed = (ocr.unwrap());
             let _ = std::fs::remove_file(tempfile.path());
 

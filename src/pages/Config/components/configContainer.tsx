@@ -1,4 +1,4 @@
-import { Button, Typography } from "antd";
+import { Button, Flex, Typography } from "antd";
 import useXabelFishConfig, {
   EmptyXabelFishConfig,
   XabelFishConfig,
@@ -11,6 +11,7 @@ import License from "./license";
 import { invoke } from "@tauri-apps/api/core";
 import { isEqual } from "es-toolkit";
 import SaveFooter from "./saveFooter";
+import TesseractConfigForm from "./tesseractConfigForm";
 
 export default function ConfigContainer() {
   const config = useXabelFishConfig();
@@ -42,9 +43,11 @@ export default function ConfigContainer() {
   return (
     <div style={{ padding: "20px" }}>
       <Typography.Title level={4}>Window/Region selection</Typography.Title>
-      <Button type="primary" onClick={setWindow}>
-        Select window or region
-      </Button>
+      <Flex gap="10px">
+        <Button type="primary" onClick={setWindow}>
+          Select window or region
+        </Button>
+      </Flex>
 
       <Typography.Title level={4}>Config</Typography.Title>
 
@@ -53,6 +56,12 @@ export default function ConfigContainer() {
         value={formValue}
         onChange={setFormValue}
       ></TranslationConfigForm>
+
+      <Typography.Title level={5}>OCR</Typography.Title>
+      <TesseractConfigForm
+        value={formValue}
+        onChange={setFormValue}
+      ></TesseractConfigForm>
 
       <Typography.Title level={5}>Appearance</Typography.Title>
       <AppearanceConfigForm

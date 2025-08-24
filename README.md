@@ -22,7 +22,7 @@ You need to change DeepL API Key with Settings menu.
 - [ ] Support other OCR engines
   - [ ] EasyOCR
   - [ ] ppocr?
-- [ ] Add tessearact source lanaguge (currently hard-coded to `jpn`)
+- [x] Add tessearact source lanaguge (currently hard-coded to `jpn`)
 - [ ] Add translator option (target language, source language)
 - [x] Add font settings
 - [ ] Add support for other translating engines

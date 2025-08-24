@@ -11,3 +11,6 @@ pub fn default_background_color() -> String {
 pub fn default_font_color() -> String {
     return "#ffffff".to_string();
 }
+pub fn default_tesseract_language() -> String {
+    return "jpn".to_string();
+}
