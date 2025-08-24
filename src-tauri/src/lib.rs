@@ -1,6 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
 use std::{
+    process::exit,
     sync::{mpsc, Arc, Mutex},
     thread,
     time::Duration,
@@ -107,6 +108,8 @@ pub fn run() {
                 if window.label() == "config" {
                     api.prevent_close();
                     window.hide().unwrap();
+                } else if window.label() == "main" {
+                    exit(0);
                 }
             }
             _ => {}
