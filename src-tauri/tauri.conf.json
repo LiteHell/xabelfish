@@ -14,7 +14,15 @@
       {
         "title": "xabelfish",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "transparent": true,
+        "decorations": false,
+        "label": "main"
+      },
+      {
+        "title": "xabelfish config",
+        "visible": false,
+        "label": "config"
       }
     ],
     "security": {

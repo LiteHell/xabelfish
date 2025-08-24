@@ -1,4 +1,7 @@
-:root, #root, html, body {
+:root,
+#root,
+html,
+body {
   padding: 0px;
   margin: 0px;
   width: 100%;
@@ -18,7 +21,8 @@ nav {
   padding-left: 0.5rem;
 }
 
-nav ul, nav li {
+nav ul,
+nav li {
   padding: 0px;
   margin: 0px;
 }
@@ -35,11 +39,12 @@ nav li:hover {
 }
 
 article {
-  background-color: #868686;
+  background-color: #86868633;
   color: #eeeeee;
 
   padding: 1rem 1.5rem;
   flex: 1;
 
   font-size: 2em;
+  user-select: none;
 }

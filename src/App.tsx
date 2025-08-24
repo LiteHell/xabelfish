@@ -1,7 +1,8 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./message.css";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 
 const displayLicense = () => {
   alert(`XabelFish - Game translator for Unix-like operating systems
@@ -26,6 +27,7 @@ type XabelFishConfig = {
 };
 
 function App() {
+  const appWindow = getCurrentWebview();
   const [translated, setTranslated] = useState<string | null>(null);
   listen<string>("translated", (e) => setTranslated(e.payload));
 
@@ -55,6 +57,15 @@ function App() {
     });
   };
 
+  const dragOrOpenConfig: React.MouseEventHandler<HTMLElement> = (evt) => {
+    if (evt.button === 2) {
+      evt.preventDefault();
+      alert("Hello, world!");
+    } else {
+      appWindow.window.startDragging();
+    }
+  };
+
   return (
     <main>
       <nav>
@@ -64,7 +75,12 @@ function App() {
           <li onClick={displayLicense}>License</li>
         </ul>
       </nav>
-      <article>{translated ?? "Hello, XabelFish!"}</article>
+      <article
+        onMouseDown={dragOrOpenConfig}
+        onContextMenu={(evt) => evt.preventDefault()}
+      >
+        {translated ?? "Hello, XabelFish! Right-click to open the settings"}
+      </article>
     </main>
   );
 }
