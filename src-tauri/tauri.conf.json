@@ -17,12 +17,14 @@
         "height": 600,
         "transparent": true,
         "decorations": false,
-        "label": "main"
+        "label": "main",
+        "alwaysOnTop": true
       },
       {
         "title": "xabelfish config",
         "visible": false,
-        "label": "config"
+        "label": "config",
+        "url": "/config"
       }
     ],
     "security": {

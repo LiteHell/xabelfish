@@ -1,4 +1,5 @@
 use std::{
+    path::PathBuf,
     sync::{mpsc, Arc, Mutex, RwLock},
     thread::{self, JoinHandle},
 };
@@ -47,6 +48,19 @@ impl XabelFishEngine {
             let translated = translator.translate(&ocr, Some("ja"), "ko").await;
             self.translation_cache = Some((ocr.clone(), translated.clone()));
             Some(translated.to_string())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_uncropped_image(&mut self) -> Option<PathBuf> {
+        let capture_cloned = self.capture.as_ref().unwrap().clone();
+        let image_option = (*capture_cloned).lock().unwrap().get_captured_image();
+
+        if let Some(image) = image_option {
+            let tempfile = tempfile::NamedTempFile::with_suffix(".png").unwrap();
+            image.save(&tempfile).expect("Failed to save image");
+            Some(tempfile.path().to_path_buf())
         } else {
             None
         }

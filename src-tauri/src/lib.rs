@@ -6,14 +6,15 @@ use std::{
     time::Duration,
 };
 
+use font_kit::source::SystemSource;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::config::{get_xabelfish_config, set_xabelfish_config, XabelFishConfig};
 
+mod config;
 mod engine;
 mod screen_capture;
 mod translate;
-mod config;
 
 #[tauri::command]
 fn get_config() -> XabelFishConfig {
@@ -21,8 +22,10 @@ fn get_config() -> XabelFishConfig {
 }
 
 #[tauri::command]
-fn set_config(config: XabelFishConfig) {
+fn set_config(app: AppHandle, config: XabelFishConfig) {
     set_xabelfish_config(config);
+    app.emit("config_changed", get_xabelfish_config())
+        .expect("Failed to emit config_changed event");
 }
 
 #[tauri::command]
@@ -35,6 +38,22 @@ fn set_window(app: AppHandle) {
         println!("Acquired lock");
         engine.select_window();
     }
+}
+
+#[tauri::command]
+fn open_config_window(app: AppHandle) {
+    let config_window = app.get_webview_window("config").unwrap();
+
+    config_window.show();
+    config_window.set_focus();
+}
+
+#[tauri::command]
+fn get_fonts() -> Vec<String> {
+    let source = SystemSource::new();
+    let families = source.all_families().expect("Failed to get font families");
+
+    return families;
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -76,7 +95,22 @@ pub fn run() {
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![set_window, get_config, set_config])
+        .invoke_handler(tauri::generate_handler![
+            set_window,
+            get_config,
+            set_config,
+            open_config_window,
+            get_fonts
+        ])
+        .on_window_event(|window, event| match event {
+            tauri::WindowEvent::CloseRequested { api, .. } => {
+                if window.label() == "config" {
+                    api.prevent_close();
+                    window.hide().unwrap();
+                }
+            }
+            _ => {}
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

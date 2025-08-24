@@ -24,7 +24,7 @@ You need to change DeepL API Key with Settings menu.
   - [ ] ppocr?
 - [ ] Add tessearact source lanaguge (currently hard-coded to `jpn`)
 - [ ] Add translator option (target language, source language)
-- [ ] Add font settings
+- [x] Add font settings
 - [ ] Add support for other translating engines
   - [ ] LibreTranslate
 - [ ] Add image-to-image translation
