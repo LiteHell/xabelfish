@@ -1,0 +1,15 @@
+[package]
+name = "screen_continuous_capture"
+version = "0.1.0"
+edition = "2024"
+authors = ["LiteHell <litehell@litehell.info>"]
+description = "Continuous screen capturing program for xabelfish"
+license = "L"
+
+[dependencies]
+clap = { version = "4.5.51", features = ["derive"] }
+image = "0.25.6"
+pipewire = "0.8.0"
+portal-screencast = "0.1.0"
+screen_continuous_capture_protocol = { version = "0.1.0", path = "../xabelfish_socket_protocol" }
+tempfile = "3.20.0"
