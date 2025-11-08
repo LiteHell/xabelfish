@@ -1,5 +1,5 @@
 [package]
-name = "screen_continuous_capture_protocol"
+name = "xabelfish_socket_protocol"
 version = "0.1.0"
 edition = "2024"
 

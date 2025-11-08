@@ -1356,26 +1356,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
-name = "screen_continuous_capture"
-version = "0.1.0"
-dependencies = [
- "clap 4.5.51",
- "image",
- "pipewire",
- "portal-screencast",
- "screen_continuous_capture_protocol",
- "tempfile",
-]
-
-[[package]]
-name = "screen_continuous_capture_protocol"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "serde"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1903,6 +1883,34 @@ name = "wit-bindgen"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
+
+[[package]]
+name = "xabelfish_cli"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+ "xabelfish_socket_protocol",
+]
+
+[[package]]
+name = "xabelfish_cont_capture"
+version = "0.1.0"
+dependencies = [
+ "clap 4.5.51",
+ "image",
+ "pipewire",
+ "portal-screencast",
+ "tempfile",
+ "xabelfish_socket_protocol",
+]
+
+[[package]]
+name = "xabelfish_socket_protocol"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "xml-rs"
