@@ -12,5 +12,6 @@ image = "0.25.6"
 pipewire = "0.8.0"
 portal-screencast = "0.1.0"
 xabelfish_socket_protocol = { version = "0.1.0", path = "../xabelfish_socket_protocol" }
+unix_socket_transport = { version = "0.1.0", path = "../unix_socket_transport" }
 xabelfish_utils = { version = "0.1.0", path = "../xabelfish_utils" }
 tempfile = "3.20.0"

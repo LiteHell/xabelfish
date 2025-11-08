@@ -1,0 +1,9 @@
+[package]
+name = "unix_socket_transport"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bson = { version = "3.0.0", features = ["serde"] }
+serde = { version = "1.0.228" }
+tempfile = "3.23.0"
