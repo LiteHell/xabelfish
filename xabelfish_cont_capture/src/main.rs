@@ -9,8 +9,9 @@ use std::{io::*, os::unix::net::UnixListener};
 
 use clap::Parser;
 use image::EncodableLayout;
-use xabelfish_socket_protocol::MessageType;
-use xabelfish_socket_protocol::{Message, read_line_for_unix_stream};
+use xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType;
+use xabelfish_socket_protocol::cont_capture::{ContinuousCaptureMessage};
+use xabelfish_utils::read_until_nul_from_unix_stream;
 
 use crate::screen_capture::Capture;
 use crate::screen_capture::pipewire::pipewire;
@@ -32,7 +33,7 @@ fn main() {
 
     // Loop for listening control command
     'listen_control: loop {
-        let read_request_result = read_line_for_unix_stream(&mut socket, &mut command);
+        let read_request_result = read_until_nul_from_unix_stream(&mut socket, &mut command);
         println!("Read capture request message... raw: {:#?}", &command);
 
         match read_request_result {
@@ -48,7 +49,7 @@ fn main() {
             // Handle message retrival
             Ok(_) => {
                 // Handle invalid command
-                let command = match xabelfish_socket_protocol::Message::parse_from_str(
+                let command = match xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessage::parse_from_str(
                     command.as_str(),
                 ) {
                     Ok(parsed) => parsed,
@@ -58,14 +59,14 @@ fn main() {
                             err
                         );
                         let _ = socket
-                            .write_all(Message::invalid_message().to_nul_ended_vec().as_bytes());
+                            .write_all(ContinuousCaptureMessage::invalid_message().to_nul_ended_vec().as_bytes());
                         continue 'listen_control;
                     }
                 };
 
                 // Handle message
                 let write_response_result: Result<()> = match command.message_type {
-                    MessageType::StartCapture => {
+                    ContinuousCaptureMessageType::StartCapture => {
                         println!("Accepted start capture message on control");
 
                         // Create temp socket file path
@@ -120,7 +121,7 @@ fn main() {
                                                 .expect("Failed to write png bytes");
 
                                             let mut disconnected = false;
-                                            if Message::png(bytes).write_to(&mut socket).is_err() {
+                                            if ContinuousCaptureMessage::png(bytes).write_to(&mut socket).is_err() {
                                                 disconnected = true;
                                             }
 
@@ -145,24 +146,24 @@ fn main() {
 
                         let init_success = init_success_recv.recv().unwrap();
                         let response = if init_success {
-                            Message {
+                            ContinuousCaptureMessage {
                                 extra_bytes: vec![],
                                 extra_str: data_socket_path_str.clone(),
-                                message_type: MessageType::CaptureInitSuccess,
+                                message_type: ContinuousCaptureMessageType::CaptureInitSuccess,
                             }
                         } else {
-                            Message {
+                            ContinuousCaptureMessage {
                                 extra_bytes: vec![],
                                 extra_str: "".to_string(),
-                                message_type: MessageType::CaptureInitFail,
+                                message_type: ContinuousCaptureMessageType::CaptureInitFail,
                             }
                         };
                         socket.write_all(response.to_nul_ended_vec().as_bytes())
                     }
-                    MessageType::Ping => {
+                    ContinuousCaptureMessageType::Ping => {
                         println!("Ping-pong on control socket!");
                         socket.write_all(
-                            Message::pong(command.extra_str)
+                            ContinuousCaptureMessage::pong(command.extra_str)
                                 .to_nul_ended_vec()
                                 .as_bytes(),
                         )

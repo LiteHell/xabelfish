@@ -1885,14 +1885,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f17a85883d4e6d00e8a97c586de764dabcc06133f7f1d55dce5cdc070ad7fe59"
 
 [[package]]
-name = "xabelfish_cli"
-version = "0.1.0"
-dependencies = [
- "tempfile",
- "xabelfish_socket_protocol",
-]
-
-[[package]]
 name = "xabelfish_cont_capture"
 version = "0.1.0"
 dependencies = [
@@ -1902,6 +1894,7 @@ dependencies = [
  "portal-screencast",
  "tempfile",
  "xabelfish_socket_protocol",
+ "xabelfish_utils",
 ]
 
 [[package]]
@@ -1911,6 +1904,10 @@ dependencies = [
  "serde",
  "serde_json",
 ]
+
+[[package]]
+name = "xabelfish_utils"
+version = "0.1.0"
 
 [[package]]
 name = "xml-rs"
