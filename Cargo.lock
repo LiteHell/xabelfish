@@ -2122,7 +2122,6 @@ dependencies = [
  "tempfile",
  "unix_socket_transport",
  "xabelfish_socket_protocol",
- "xabelfish_utils",
 ]
 
 [[package]]
@@ -2131,10 +2130,6 @@ version = "0.1.0"
 dependencies = [
  "serde",
 ]
-
-[[package]]
-name = "xabelfish_utils"
-version = "0.1.0"
 
 [[package]]
 name = "xml-rs"
