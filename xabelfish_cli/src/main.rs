@@ -6,10 +6,6 @@ use xabelfish_unix_socket::{
 };
 
 fn main() {
-    remove_file("/tmp/sibal.sock");
-    let sibal = UnixListener::bind("/tmp/sibal.sock").unwrap();
-    println!("sibal: {sibal:#?}");
-
     println!("Note: cli is for testing");
 
     let (mut cont_capture_listener, control_sock_path) =
