@@ -1,9 +1,9 @@
 use std::{fs::remove_file, os::unix::net::UnixListener, path::Path, process::Command};
 
-use unix_socket_transport::{
+use xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessage;
+use xabelfish_unix_socket::{
     unix_socket_client::UnixSocketClient, unix_socket_server::UnixSocketServer,
 };
-use xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessage;
 
 fn main() {
     remove_file("/tmp/sibal.sock");

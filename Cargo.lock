@@ -1782,15 +1782,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7dd6e30e90baa6f72411720665d41d89b9a3d039dc45b8faea1ddd07f617f6af"
 
 [[package]]
-name = "unix_socket_transport"
-version = "0.1.0"
-dependencies = [
- "bson",
- "serde",
- "tempfile",
-]
-
-[[package]]
 name = "utf8parse"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2115,8 +2106,8 @@ dependencies = [
 name = "xabelfish_cli"
 version = "0.1.0"
 dependencies = [
- "unix_socket_transport",
  "xabelfish_socket_protocol",
+ "xabelfish_unix_socket",
 ]
 
 [[package]]
@@ -2127,8 +2118,8 @@ dependencies = [
  "image",
  "pipewire",
  "portal-screencast",
- "unix_socket_transport",
  "xabelfish_socket_protocol",
+ "xabelfish_unix_socket",
 ]
 
 [[package]]
@@ -2136,8 +2127,8 @@ name = "xabelfish_ocr_tesseract"
 version = "0.1.0"
 dependencies = [
  "clap 4.5.51",
- "unix_socket_transport",
  "xabelfish_socket_protocol",
+ "xabelfish_unix_socket",
 ]
 
 [[package]]
@@ -2145,6 +2136,15 @@ name = "xabelfish_socket_protocol"
 version = "0.1.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "xabelfish_unix_socket"
+version = "0.1.0"
+dependencies = [
+ "bson",
+ "serde",
+ "tempfile",
 ]
 
 [[package]]

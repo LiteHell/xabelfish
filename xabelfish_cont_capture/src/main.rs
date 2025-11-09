@@ -6,10 +6,10 @@ use std::sync::mpsc;
 use std::thread;
 
 use clap::Parser;
-use unix_socket_transport::unix_socket_client::UnixSocketClient;
-use unix_socket_transport::unix_socket_server::UnixSocketServer;
 use xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessage;
 use xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType;
+use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
+use xabelfish_unix_socket::unix_socket_server::UnixSocketServer;
 
 use crate::screen_capture::Capture;
 use crate::screen_capture::pipewire::pipewire;

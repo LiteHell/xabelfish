@@ -1,5 +1,5 @@
 [package]
-name = "unix_socket_transport"
+name = "xabelfish_unix_socket"
 version = "0.1.0"
 edition = "2024"
 
