@@ -4,10 +4,12 @@ mod max_sized_deque;
 use std::sync::mpsc;
 
 fn main() {
-    let mut engine = engine::XabelFishEngine::new();
+    let (mut tx, rx) = mpsc::channel();
 
-    let (mut rw, tx) = mpsc::channel();
-    engine.start_nonblocking(&mut rw);
+    let mut engine = engine::XabelFishEngine::new(&mut tx);
+    engine.start_nonblocking();
 
-    loop {}
+    for i in rx.iter() {
+        println!("translated: {i}");
+    }
 }

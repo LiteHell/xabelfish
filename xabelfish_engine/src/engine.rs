@@ -2,28 +2,37 @@ use std::{
     env::current_exe,
     path::{Path, PathBuf},
     process::{Child, Command},
-    sync::{Arc, mpsc},
+    sync::{
+        Arc,
+        atomic::AtomicBool,
+        mpsc::{self, Sender},
+    },
     thread,
 };
 
-use xabelfish_socket_protocol::{cont_capture::ContinuousCaptureMessage, ocr::OcrMessage};
+use xabelfish_socket_protocol::{
+    cont_capture::ContinuousCaptureMessage, ocr::OcrMessage, translate::TranslateMessage,
+};
 use xabelfish_unix_socket::{
     unix_socket_client::UnixSocketClient, unix_socket_server::UnixSocketServer,
 };
 
 use crate::max_sized_deque::RoughlySizeConstraintDeque;
 
-pub enum XabelFishOcrType {
-    Tesseract,
-}
-
 pub struct XabelFishEngine {
     started: bool,
+    stopping: Arc<AtomicBool>,
     executable_base_dir: PathBuf,
     cont_capture_process: Option<Child>,
     ocr_process: Option<Child>,
-    ocr_type: XabelFishOcrType,
+    translate_process: Option<Child>,
+    cont_capture_socket_path: Option<String>,
+    ocr_socket_path: Option<String>,
+    translate_socket_path: Option<String>,
+    ocr_type: String,
+    translation_tw: Sender<String>,
     image_stack: Arc<RoughlySizeConstraintDeque<ContinuousCaptureMessage>>,
+    ocr_stack: Arc<RoughlySizeConstraintDeque<String>>,
 }
 
 impl XabelFishEngine {
@@ -31,7 +40,7 @@ impl XabelFishEngine {
         self.executable_base_dir.join(name)
     }
 
-    pub fn new() -> Self {
+    pub fn new(translation_tw: &mut mpsc::Sender<String>) -> Self {
         let executable_base_dir = {
             let mut exe_path = current_exe().unwrap();
             exe_path.pop();
@@ -40,15 +49,22 @@ impl XabelFishEngine {
 
         Self {
             started: false,
+            stopping: Arc::new(AtomicBool::new(false)),
             executable_base_dir,
             cont_capture_process: None,
             ocr_process: None,
-            ocr_type: XabelFishOcrType::Tesseract,
+            translate_process: None,
+            cont_capture_socket_path: None,
+            ocr_socket_path: None,
+            translate_socket_path: None,
+            ocr_type: String::new(),
             image_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
+            ocr_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
+            translation_tw: translation_tw.clone(),
         }
     }
 
-    pub fn start_nonblocking(&mut self, translation_recevier: &mut mpsc::Sender<String>) {
+    pub fn start_nonblocking(&mut self) {
         if self.started {
             panic!("xabelFish engine already started!");
         } else {
@@ -57,16 +73,74 @@ impl XabelFishEngine {
 
         self.start_capture();
         self.start_ocr();
+        self.start_translate();
+    }
+
+    fn get_ocr_executable_path(&self) -> PathBuf {
+        return self.get_executable(PathBuf::from("xabelfish_ocr_tesseract"));
+    }
+
+    fn get_translate_executable_path(&self) -> PathBuf {
+        return self.get_executable(PathBuf::from("xabelfish_translate_deepl"));
+    }
+
+    fn start_translate(&mut self) {
+        let exec_path = Arc::new(
+            self.get_translate_executable_path()
+                .as_mut_os_string()
+                .clone(),
+        );
+
+        let (mut translate_listener, translate_sock_path) =
+            UnixSocketServer::create().expect("Failed to create control socket for translate");
+        let translation_tw = self.translation_tw.clone();
+
+        let translate_process = Command::new(exec_path.as_os_str())
+            .arg("--socket-path")
+            .arg(translate_sock_path.clone())
+            .spawn()
+            .expect("Failed to run translate");
+
+        self.translate_process = Some(translate_process);
+
+        let image_stack = self.image_stack.clone();
+        let ocr_stack = self.ocr_stack.clone();
+
+        thread::spawn(move || {
+            loop {
+                let mut cont_capture = translate_listener
+                    .accept()
+                    .expect("Failed to accept continous capture connection");
+
+                loop {
+                    let ocr_text = match ocr_stack.last() {
+                        Some(text) => text,
+                        None => continue,
+                    };
+
+                    cont_capture
+                        .send(&TranslateMessage {
+                            message_type:
+                                xabelfish_socket_protocol::translate::TranslateMessageType::TranslateRequest,
+                            config: String::new(),
+                            data_bool: false,
+                            data_text: ocr_text,
+                            dst: String::from("ko"),
+                            src:  xabelfish_socket_protocol::translate::TranslateSourceLanguage::Automatic
+                        })
+                        .expect("Failed to send translate req command");
+
+                    let response: TranslateMessage =
+                        cont_capture.recv().expect("Failed to receive response");
+
+                    translation_tw.send(response.data_text);
+                }
+            }
+        });
     }
 
     fn start_ocr(&mut self) {
-        let exec_path = Arc::new(
-            self.get_executable(PathBuf::from(match self.ocr_type {
-                XabelFishOcrType::Tesseract => "xabelfish_ocr_tesseract",
-            }))
-            .as_mut_os_string()
-            .clone(),
-        );
+        let exec_path = Arc::new(self.get_ocr_executable_path().as_mut_os_string().clone());
 
         let (mut ocr_listener, ocr_sock_path) =
             UnixSocketServer::create().expect("Failed to create control socket for ocr");
@@ -80,6 +154,7 @@ impl XabelFishEngine {
         self.ocr_process = Some(ocr_process);
 
         let image_stack = self.image_stack.clone();
+        let ocr_stack = self.ocr_stack.clone();
 
         thread::spawn(move || {
             loop {
@@ -107,7 +182,7 @@ impl XabelFishEngine {
                     let response: OcrMessage =
                         cont_capture.recv().expect("Failed to receive response");
 
-                    let ocr_result = response.text;
+                    ocr_stack.push(response.text);
                 }
             }
         });
