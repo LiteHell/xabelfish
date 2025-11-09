@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ContinuousCaptureMessageType {
     // Cont Capture
     StartCapture,
@@ -12,7 +12,7 @@ pub enum ContinuousCaptureMessageType {
     Pong,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ContinuousCaptureMessage {
     pub message_type: ContinuousCaptureMessageType,
     pub extra_str: String,

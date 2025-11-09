@@ -1,4 +1,5 @@
 mod engine;
+mod max_sized_deque;
 
 use std::sync::mpsc;
 

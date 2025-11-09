@@ -35,7 +35,8 @@ impl<T> RoughlySizedLockFreeStack<T> {
 
     pub fn push(&self, item: T) -> RoughlySizedLockFreeStackPushResult {
         if self.size.load(std::sync::atomic::Ordering::Relaxed) > self.max_size {
-            return RoughlySizedLockFreeStackPushResult::Full;
+            self.stack.pop();
+            self.stack.pop();
         }
         self.stack.push(item);
         self.size.fetch_add(1, std::sync::atomic::Ordering::Relaxed);

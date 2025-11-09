@@ -117,7 +117,7 @@ impl Capture for PipeWireScreenCapture {
             let data = self.screen_data.as_ref().unwrap().read().unwrap().clone();
             let info = self.screen_info.as_ref().unwrap().read().unwrap().clone();
 
-            if (data.is_empty() || info.is_empty()) {
+            if data.is_empty() || info.is_empty() {
                 return None;
             }
 

@@ -1,30 +1,29 @@
 use std::{
     env::current_exe,
-    fs::remove_file,
-    os::unix::net::UnixListener,
     path::{Path, PathBuf},
     process::{Child, Command},
     sync::{Arc, mpsc},
     thread,
 };
 
-use xabelfish_sized_lockfree_stack::RoughlySizedLockFreeStack;
-use xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessage;
+use xabelfish_socket_protocol::{cont_capture::ContinuousCaptureMessage, ocr::OcrMessage};
 use xabelfish_unix_socket::{
     unix_socket_client::UnixSocketClient, unix_socket_server::UnixSocketServer,
 };
 
+use crate::max_sized_deque::RoughlySizeConstraintDeque;
+
 pub enum XabelFishOcrType {
-    Tesseract(UnixSocketServer),
+    Tesseract,
 }
 
 pub struct XabelFishEngine {
     started: bool,
     executable_base_dir: PathBuf,
     cont_capture_process: Option<Child>,
-    ocr_control_listener: Option<XabelFishOcrType>,
-    ocr_control_sock_path: String,
-    image_stack: Arc<RoughlySizedLockFreeStack<ContinuousCaptureMessage>>,
+    ocr_process: Option<Child>,
+    ocr_type: XabelFishOcrType,
+    image_stack: Arc<RoughlySizeConstraintDeque<ContinuousCaptureMessage>>,
 }
 
 impl XabelFishEngine {
@@ -43,9 +42,9 @@ impl XabelFishEngine {
             started: false,
             executable_base_dir,
             cont_capture_process: None,
-            ocr_control_listener: None,
-            ocr_control_sock_path: String::new(),
-            image_stack: Arc::new(RoughlySizedLockFreeStack::new(10)),
+            ocr_process: None,
+            ocr_type: XabelFishOcrType::Tesseract,
+            image_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
         }
     }
 
@@ -57,6 +56,66 @@ impl XabelFishEngine {
         }
 
         self.start_capture();
+        self.start_ocr();
+    }
+
+    fn start_ocr(&mut self) {
+        let exec_path = Arc::new(
+            self.get_executable(PathBuf::from(match self.ocr_type {
+                XabelFishOcrType::Tesseract => "xabelfish_ocr_tesseract",
+            }))
+            .as_mut_os_string()
+            .clone(),
+        );
+
+        let (mut ocr_listener, ocr_sock_path) =
+            UnixSocketServer::create().expect("Failed to create control socket for ocr");
+
+        let ocr_process = Command::new(exec_path.as_os_str())
+            .arg("--socket-path")
+            .arg(ocr_sock_path.clone())
+            .spawn()
+            .expect("Failed to run continous capture");
+
+        self.ocr_process = Some(ocr_process);
+
+        let image_stack = self.image_stack.clone();
+
+        thread::spawn(move || {
+            loop {
+                println!("Accepting...");
+                let mut cont_capture = ocr_listener
+                    .accept()
+                    .expect("Failed to accept continous capture connection");
+
+                println!("Accepted ocr connection");
+
+                loop {
+                    let image = match image_stack.last() {
+                        Some(image) => image,
+                        None => continue,
+                    };
+
+                    println!("Requesting ocr...");
+                    cont_capture
+                        .send(&OcrMessage {
+                            message_type:
+                                xabelfish_socket_protocol::ocr::OcrMessageType::OcrRequest,
+                            config: String::new(),
+                            text: String::new(),
+                            image_bytes: image.extra_bytes,
+                            image_type: image.extra_str,
+                        })
+                        .expect("Failed to send ocr req command");
+
+                    let response: OcrMessage =
+                        cont_capture.recv().expect("Failed to receive response");
+
+                    let ocr_result = response.text;
+                    println!("ocr result: {ocr_result}");
+                }
+            }
+        });
     }
 
     fn start_capture(&mut self) {
@@ -76,9 +135,9 @@ impl XabelFishEngine {
 
         self.cont_capture_process = Some(cont_capture_process);
 
-        let mut image_stack = self.image_stack.clone();
+        let image_stack = self.image_stack.clone();
 
-        let thread = thread::spawn(move || {
+        thread::spawn(move || {
             loop {
                 println!("Accepting...");
                 let mut cont_capture = cont_capture_control_listener
@@ -109,12 +168,7 @@ impl XabelFishEngine {
                             let data: ContinuousCaptureMessage = data_client.recv().expect("Failed to get data");
 
                             println!("Got message: {:#?} type", data.message_type);
-                            match image_stack.push(data) {
-                                xabelfish_sized_lockfree_stack::RoughlySizedLockFreeStackPushResult::Done => println!("Pushed message"),
-                                xabelfish_sized_lockfree_stack::RoughlySizedLockFreeStackPushResult::Full => {
-                                    println!("stack full");
-                                }
-                            }
+                            image_stack.push(data);
                         }
                     }
                     _ => {}
