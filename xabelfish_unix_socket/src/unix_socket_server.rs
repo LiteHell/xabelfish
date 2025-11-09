@@ -1,5 +1,5 @@
 use std::{
-    fs::remove_file,
+    fs::{exists, remove_file},
     io::Error,
     os::unix::net::UnixListener,
     path::{Path, PathBuf},
@@ -31,6 +31,10 @@ impl UnixSocketServer {
             .into_temp_path();
 
         remove_file(&temp_path).expect("Failed to delete temp file");
+
+        // remove_file doesn't gauarantee that the file will be deleted immediately...
+        // so we need to wait for file to be deleted.
+        while exists(&temp_path).is_ok_and(|x| x) {}
 
         temp_path.to_path_buf()
     }

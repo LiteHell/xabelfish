@@ -1,0 +1,9 @@
+[package]
+name = "xabelfish_engine"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+xabelfish_sized_lockfree_stack = { version = "0.1.0", path = "../xabelfish_sized_lockfree_stack" }
+xabelfish_socket_protocol = { version = "0.1.0", path = "../xabelfish_socket_protocol" }
+xabelfish_unix_socket = { version = "0.1.0", path = "../xabelfish_unix_socket" }

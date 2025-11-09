@@ -5,7 +5,7 @@ use std::{
 };
 
 use image::{Rgba, RgbaImage};
-use pipewire::{spa::param::video::VideoFormat};
+use pipewire::spa::param::video::VideoFormat;
 use portal_screencast::{ActiveScreenCast, PortalError};
 
 use crate::screen_capture::{

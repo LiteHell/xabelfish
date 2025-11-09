@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ContinuousCaptureMessageType {
@@ -24,21 +24,21 @@ impl ContinuousCaptureMessage {
         ContinuousCaptureMessage {
             message_type: ContinuousCaptureMessageType::InvalidMessage,
             extra_str: "".to_string(),
-            extra_bytes: vec![]
+            extra_bytes: vec![],
         }
     }
     pub fn pong(extra: String) -> Self {
         ContinuousCaptureMessage {
             message_type: ContinuousCaptureMessageType::Pong,
             extra_str: extra,
-            extra_bytes: vec![]
+            extra_bytes: vec![],
         }
     }
     pub fn png(bytes: Vec<u8>) -> Self {
         ContinuousCaptureMessage {
             message_type: ContinuousCaptureMessageType::CaptureImageBytes,
             extra_str: "png".to_string(),
-            extra_bytes: bytes
+            extra_bytes: bytes,
         }
     }
 }

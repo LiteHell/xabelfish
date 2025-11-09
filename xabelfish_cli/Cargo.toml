@@ -1,8 +1,0 @@
-[package]
-name = "xabelfish_cli"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-xabelfish_unix_socket = { version = "0.1.0", path = "../xabelfish_unix_socket" }
-xabelfish_socket_protocol = { version = "0.1.0", path = "../xabelfish_socket_protocol" }
