@@ -1,0 +1,9 @@
+[package]
+name = "xabelfish_ocr_tesseract"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.51", features = ["derive"] }
+unix_socket_transport = { version = "0.1.0", path = "../unix_socket_transport" }
+xabelfish_socket_protocol = { version = "0.1.0", path = "../xabelfish_socket_protocol" }

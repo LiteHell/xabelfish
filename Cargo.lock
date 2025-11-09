@@ -2132,6 +2132,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "xabelfish_ocr_tesseract"
+version = "0.1.0"
+dependencies = [
+ "clap 4.5.51",
+ "unix_socket_transport",
+ "xabelfish_socket_protocol",
+]
+
+[[package]]
 name = "xabelfish_socket_protocol"
 version = "0.1.0"
 dependencies = [
