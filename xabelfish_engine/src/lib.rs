@@ -1,10 +1,12 @@
+mod max_sized_deque;
+
 use std::{
     env::current_exe,
     path::{Path, PathBuf},
     process::{Child, Command},
     sync::{
         Arc,
-        atomic::AtomicBool,
+        atomic::{AtomicBool, Ordering},
         mpsc::{self, Sender},
     },
     thread,
@@ -94,6 +96,7 @@ impl XabelFishEngine {
         let (mut translate_listener, translate_sock_path) =
             UnixSocketServer::create().expect("Failed to create control socket for translate");
         let translation_tw = self.translation_tw.clone();
+        self.translate_socket_path = Some(translate_sock_path.clone());
 
         let translate_process = Command::new(exec_path.as_os_str())
             .arg("--socket-path")
@@ -152,6 +155,7 @@ impl XabelFishEngine {
             .expect("Failed to run continous capture");
 
         self.ocr_process = Some(ocr_process);
+        self.ocr_socket_path = Some(ocr_sock_path.clone());
 
         let image_stack = self.image_stack.clone();
         let ocr_stack = self.ocr_stack.clone();
@@ -204,6 +208,7 @@ impl XabelFishEngine {
             .expect("Failed to run continous capture");
 
         self.cont_capture_process = Some(cont_capture_process);
+        self.cont_capture_socket_path = Some(cont_capture_control_sock_path.clone());
 
         let image_stack = self.image_stack.clone();
 
@@ -241,8 +246,15 @@ impl XabelFishEngine {
 
 impl Drop for XabelFishEngine {
     fn drop(&mut self) {
+        self.stopping.store(true, Ordering::Relaxed);
         if let Some(cont_capture_process) = self.cont_capture_process.as_mut() {
             cont_capture_process.kill();
+        }
+        if let Some(ocr_process) = self.ocr_process.as_mut() {
+            ocr_process.kill();
+        }
+        if let Some(translate_process) = self.translate_process.as_mut() {
+            translate_process.kill();
         }
     }
 }

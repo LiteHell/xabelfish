@@ -1,3 +1,3 @@
 [workspace]
 resolver = "3"
-members = ["xabelfish_socket_protocol", "xabelfish_cont_capture", "xabelfish_unix_socket", "xabelfish_ocr_tesseract", "xabelfish_engine", "xabelfish_translate_deepl"]
+members = ["xabelfish_socket_protocol", "xabelfish_cont_capture", "xabelfish_unix_socket", "xabelfish_ocr_tesseract", "xabelfish_engine", "xabelfish_translate_deepl", "xabelfish_cli"]

@@ -1,0 +1,9 @@
+[package]
+name = "xabelfish_cli"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clearscreen = "4.0.2"
+termcolor = "1.4.1"
+xabelfish_engine = { version = "0.1.0", path = "../xabelfish_engine" }
