@@ -9,20 +9,27 @@ use serde::{Serialize, de::DeserializeOwned};
 
 pub struct UnixSocketClient {
     stream: UnixStream,
+    closed: bool,
 }
 
 const READ_BUFFER_SIZE: usize = 1024;
 
 impl From<UnixStream> for UnixSocketClient {
     fn from(stream: UnixStream) -> Self {
-        Self { stream }
+        Self {
+            stream,
+            closed: false,
+        }
     }
 }
 
 impl UnixSocketClient {
     pub fn connect(path: &Path) -> Result<Self, Error> {
         let stream = UnixStream::connect(&path)?;
-        Ok(Self { stream })
+        Ok(Self {
+            stream,
+            closed: false,
+        })
     }
 
     fn send_bytes(&mut self, data: &[u8]) -> Result<usize, Error> {
@@ -51,6 +58,10 @@ impl UnixSocketClient {
         Ok(deserialized)
     }
 
+    fn is_closed(&self) -> bool {
+        self.closed
+    }
+
     fn recv_data_len(&mut self) -> Result<usize, Error> {
         let len_byte_count: usize = (usize::BITS / 8).try_into().unwrap();
         let mut buffer = [0; 8];
@@ -60,6 +71,12 @@ impl UnixSocketClient {
             let byte_count_read = self
                 .stream
                 .read(&mut buffer[total_read_byte_count..len_byte_count])?;
+
+            if byte_count_read == 0 {
+                println!("socket looks closed");
+                self.closed = true;
+            }
+
             total_read_byte_count += byte_count_read;
         }
 
