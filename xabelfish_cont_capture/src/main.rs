@@ -25,112 +25,120 @@ fn main() {
     let args = CommandArgs::parse();
     let socket_path = Path::new(&args.socket_path);
 
-    let mut socket = UnixSocketClient::connect(&socket_path).expect("Failed to bind socket path");
-    println!("Connected screen capture control socket");
-
-    // Loop for listening control command
-    'listen_request_control: loop {
-        // Handle invalid command
-        let command = match socket.recv::<ContinuousCaptureMessage>() {
-            Ok(parsed) => parsed,
-            Err(err) => {
-                println!(
-                    "Control message parse error: {:#?}\nSending invalid message response!",
-                    err
-                );
-                let _ = socket.send(&ContinuousCaptureMessage::invalid_message());
-                continue 'listen_request_control;
+    println!("cont_cap! socket path received: {socket_path:#?}");
+    'connect_control_server: loop {
+        let mut socket = match UnixSocketClient::connect(&socket_path) {
+            Ok(socket) => socket,
+            Err(_) => {
+                continue 'connect_control_server;
             }
         };
+        println!("Connected screen capture control socket");
 
-        // Handle message
-        let write_response_result: Result<()> = match command.message_type {
-            ContinuousCaptureMessageType::StartCapture => {
-                println!("Accepted start capture message on control");
+        // Loop for listening control command
+        'listen_request_control: loop {
+            // Handle invalid command
+            let command = match socket.recv::<ContinuousCaptureMessage>() {
+                Ok(parsed) => parsed,
+                Err(err) => {
+                    println!(
+                        "Control message parse error: {:#?}\nSending invalid message response!",
+                        err
+                    );
+                    let _ = socket.send(&ContinuousCaptureMessage::invalid_message());
+                    continue 'listen_request_control;
+                }
+            };
 
-                // Channel for initialization success retrival
-                let (init_success_rw, init_success_recv) = mpsc::channel();
+            // Handle message
+            let write_response_result: Result<()> = match command.message_type {
+                ContinuousCaptureMessageType::StartCapture => {
+                    println!("Accepted start capture message on control");
 
-                // Create thread
-                let _ = thread::spawn(move || {
-                    let (mut data_server, data_server_sock_path) = match UnixSocketServer::create()
-                    {
-                        Ok(server) => server,
-                        Err(_) => {
+                    // Channel for initialization success retrival
+                    let (init_success_rw, init_success_recv) = mpsc::channel();
+
+                    // Create thread
+                    let _ = thread::spawn(move || {
+                        let (mut data_server, data_server_sock_path) =
+                            match UnixSocketServer::create() {
+                                Ok(server) => server,
+                                Err(_) => {
+                                    init_success_rw.send(None).unwrap();
+                                    return;
+                                }
+                            };
+
+                        // Start capture
+                        let mut capture = pipewire::PipeWireScreenCapture::new();
+                        if let Err(_) = capture.start_capture() {
                             init_success_rw.send(None).unwrap();
                             return;
                         }
-                    };
 
-                    // Start capture
-                    let mut capture = pipewire::PipeWireScreenCapture::new();
-                    if let Err(_) = capture.start_capture() {
-                        init_success_rw.send(None).unwrap();
-                        return;
-                    }
+                        // Init success
+                        init_success_rw
+                            .send(Some(data_server_sock_path.clone()))
+                            .unwrap();
 
-                    // Init success
-                    init_success_rw
-                        .send(Some(data_server_sock_path.clone()))
-                        .unwrap();
+                        'data_socket_listen_loop: loop {
+                            match data_server.accept() {
+                                Ok(mut data_client) => loop {
+                                    let image = capture.get_captured_image();
+                                    if let Some(image) = image {
+                                        println!("Sending image...");
+                                        let mut bytes: Vec<u8> = Vec::new();
+                                        image
+                                            .write_to(
+                                                &mut Cursor::new(&mut bytes),
+                                                image::ImageFormat::Png,
+                                            )
+                                            .expect("Failed to write png bytes");
 
-                    'data_socket_listen_loop: loop {
-                        match data_server.accept() {
-                            Ok(mut data_client) => loop {
-                                let image = capture.get_captured_image();
-                                if let Some(image) = image {
-                                    println!("Sending image...");
-                                    let mut bytes: Vec<u8> = Vec::new();
-                                    image
-                                        .write_to(
-                                            &mut Cursor::new(&mut bytes),
-                                            image::ImageFormat::Png,
-                                        )
-                                        .expect("Failed to write png bytes");
+                                        let image = ContinuousCaptureMessage::png(bytes);
 
-                                    let image = ContinuousCaptureMessage::png(bytes);
-
-                                    let _ = data_client.send(&image);
+                                        let _ = data_client.send(&image);
+                                    }
+                                },
+                                Err(_) => {
+                                    continue 'data_socket_listen_loop;
                                 }
-                            },
-                            Err(_) => {
-                                continue 'data_socket_listen_loop;
                             }
                         }
-                    }
-                });
+                    });
 
-                let init_success = init_success_recv.recv().unwrap();
-                let response = if let Some(path) = init_success {
-                    ContinuousCaptureMessage {
-                        extra_bytes: vec![],
-                        extra_str: path.clone(),
-                        message_type: ContinuousCaptureMessageType::CaptureInitSuccess,
-                    }
-                } else {
-                    ContinuousCaptureMessage {
-                        extra_bytes: vec![],
-                        extra_str: "".to_string(),
-                        message_type: ContinuousCaptureMessageType::CaptureInitFail,
-                    }
-                };
+                    let init_success = init_success_recv.recv().unwrap();
+                    let response = if let Some(path) = init_success {
+                        ContinuousCaptureMessage {
+                            extra_bytes: vec![],
+                            extra_str: path.clone(),
+                            message_type: ContinuousCaptureMessageType::CaptureInitSuccess,
+                        }
+                    } else {
+                        ContinuousCaptureMessage {
+                            extra_bytes: vec![],
+                            extra_str: "".to_string(),
+                            message_type: ContinuousCaptureMessageType::CaptureInitFail,
+                        }
+                    };
 
-                socket.send(&response)
-            }
-            ContinuousCaptureMessageType::Ping => {
-                println!("Ping-pong on control socket!");
-                socket.send(&ContinuousCaptureMessage::pong(command.extra_str))
-            }
-            _ => {
-                println!("Ignoring Non-control message on control socket...");
-                Ok(())
-            }
-        };
+                    socket.send(&response)
+                }
+                ContinuousCaptureMessageType::Ping => {
+                    println!("Ping-pong on control socket!");
+                    socket.send(&ContinuousCaptureMessage::pong(command.extra_str))
+                }
+                _ => {
+                    println!("Ignoring Non-control message on control socket...");
+                    Ok(())
+                }
+            };
 
-        // Listen for another command if write fails
-        if write_response_result.is_err() {
-            println!("Writing response failed... waiting for another request");
-            continue 'listen_request_control;
+            // Listen for another command if write fails
+            if write_response_result.is_err() {
+                println!("Writing response failed... waiting for another request");
+                continue 'listen_request_control;
+            }
         }
     }
 }

@@ -91,3 +91,9 @@ impl UnixSocketClient {
         Ok(vec)
     }
 }
+
+impl Drop for UnixSocketClient {
+    fn drop(&mut self) {
+        let _ = self.stream.shutdown(std::net::Shutdown::Both);
+    }
+}

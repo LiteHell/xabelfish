@@ -1,4 +1,9 @@
-use std::{fs::remove_file, io::Error, os::unix::net::UnixListener, path::Path};
+use std::{
+    fs::remove_file,
+    io::Error,
+    os::unix::net::UnixListener,
+    path::{Path, PathBuf},
+};
 
 use tempfile::NamedTempFile;
 
@@ -6,20 +11,32 @@ use crate::unix_socket_client::UnixSocketClient;
 
 pub struct UnixSocketServer {
     listener: UnixListener,
+    path: PathBuf,
 }
 
 impl UnixSocketServer {
     pub fn bind(path: &Path) -> Result<Self, Error> {
-        let stream = UnixListener::bind(&path)?;
-        Ok(Self { listener: stream })
+        let listener = UnixListener::bind(path)?;
+        println!("Server socket bound at {listener:?}");
+
+        Ok(Self {
+            listener,
+            path: path.to_path_buf(),
+        })
     }
 
-    pub fn create() -> Result<(Self, String), Error> {
+    pub fn get_temp_sock_path() -> PathBuf {
         let temp_path = NamedTempFile::with_suffix(".sock")
             .expect("Failed to create temp file")
             .into_temp_path();
 
         remove_file(&temp_path).expect("Failed to delete temp file");
+
+        temp_path.to_path_buf()
+    }
+
+    pub fn create() -> Result<(Self, String), Error> {
+        let temp_path = Self::get_temp_sock_path();
 
         let server = Self::bind(&temp_path)?;
         let path_string = temp_path.as_os_str().to_str().unwrap().to_string();
@@ -28,8 +45,17 @@ impl UnixSocketServer {
     }
 
     pub fn accept(&mut self) -> Result<UnixSocketClient, Error> {
+        println!("Accepting... in accept func");
         let (stream, _addr) = self.listener.accept()?;
+        println!("Accepted... in accept func");
 
         Ok(UnixSocketClient::from(stream))
+    }
+}
+
+impl Drop for UnixSocketServer {
+    fn drop(&mut self) {
+        let _ = remove_file(self.path.as_path());
+        println!("server dropped");
     }
 }

@@ -2112,6 +2112,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "xabelfish_cli"
+version = "0.1.0"
+dependencies = [
+ "unix_socket_transport",
+ "xabelfish_socket_protocol",
+]
+
+[[package]]
 name = "xabelfish_cont_capture"
 version = "0.1.0"
 dependencies = [
@@ -2119,7 +2127,6 @@ dependencies = [
  "image",
  "pipewire",
  "portal-screencast",
- "tempfile",
  "unix_socket_transport",
  "xabelfish_socket_protocol",
 ]
