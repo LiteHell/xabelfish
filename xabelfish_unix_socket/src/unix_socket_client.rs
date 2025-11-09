@@ -73,7 +73,6 @@ impl UnixSocketClient {
                 .read(&mut buffer[total_read_byte_count..len_byte_count])?;
 
             if byte_count_read == 0 {
-                //println!("socket looks closed");
                 self.closed = true;
             }
 

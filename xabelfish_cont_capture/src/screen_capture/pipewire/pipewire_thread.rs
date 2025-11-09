@@ -110,7 +110,7 @@ pub fn pipewire_thread(
     let _listener = stream
         .add_local_listener_with_user_data(data)
         .state_changed(|_, _, old, new| {
-            println!("State changed: {:?} -> {:?}", old, new);
+            
         })
         .param_changed(move |_, user_data, id, param| {
             let Some(param) = param else {
@@ -137,7 +137,7 @@ pub fn pipewire_thread(
                 .parse(param)
                 .expect("Failed to parse param changed to VideoInfoRaw");
 
-            println!("format: {:#?}", user_data.format.format());
+            
             (*(video_info_lock.write().unwrap())) = PipewireVideoInfo {
                 format: user_data.format.format(),
                 width: user_data.format.size().width,
@@ -147,7 +147,7 @@ pub fn pipewire_thread(
         })
         .process(move |stream, _| {
             match stream.dequeue_buffer() {
-                None => println!("out of buffers"),
+                None => {}
                 Some(mut buffer) => {
                     let datas = buffer.datas_mut();
                     if datas.is_empty() {
@@ -173,7 +173,7 @@ pub fn pipewire_thread(
         .register()
         .expect("Failed to register listeners");
 
-    println!("Created stream {:#?}", stream);
+    
 
     let obj = pw::spa::pod::object!(
         pw::spa::utils::SpaTypes::ObjectParamFormat,

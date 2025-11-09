@@ -140,13 +140,6 @@ impl Capture for PipeWireScreenCapture {
                 }
             }
 
-            println!(
-                "Image data timestamp: {}",
-                data.timestamp
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis()
-            );
             Some(image)
         }
     }

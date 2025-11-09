@@ -17,7 +17,6 @@ pub struct UnixSocketServer {
 impl UnixSocketServer {
     pub fn bind(path: &Path) -> Result<Self, Error> {
         let listener = UnixListener::bind(path)?;
-        println!("Server socket bound at {listener:?}");
 
         Ok(Self {
             listener,
@@ -49,9 +48,7 @@ impl UnixSocketServer {
     }
 
     pub fn accept(&mut self) -> Result<UnixSocketClient, Error> {
-        println!("Accepting... in accept func");
         let (stream, _addr) = self.listener.accept()?;
-        println!("Accepted... in accept func");
 
         Ok(UnixSocketClient::from(stream))
     }
@@ -60,6 +57,5 @@ impl UnixSocketServer {
 impl Drop for UnixSocketServer {
     fn drop(&mut self) {
         let _ = remove_file(self.path.as_path());
-        println!("server dropped");
     }
 }
