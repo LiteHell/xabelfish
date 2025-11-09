@@ -1,17 +1,12 @@
 use std::collections::HashMap;
 use std::io::*;
 use std::path::Path;
-use std::sync::mpsc;
-use std::thread;
 
 use clap::Parser;
 use rusty_tesseract::Image;
-use xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessage;
-use xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType;
 use xabelfish_socket_protocol::ocr::OcrMessage;
 use xabelfish_socket_protocol::ocr::OcrMessageType;
 use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
-use xabelfish_unix_socket::unix_socket_server::UnixSocketServer;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

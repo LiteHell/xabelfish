@@ -1,7 +1,6 @@
 use std::{
     sync::{Arc, RwLock},
     thread::{self},
-    time::SystemTime,
 };
 
 use image::{Rgba, RgbaImage};

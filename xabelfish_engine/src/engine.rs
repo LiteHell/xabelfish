@@ -83,12 +83,9 @@ impl XabelFishEngine {
 
         thread::spawn(move || {
             loop {
-                
                 let mut cont_capture = ocr_listener
                     .accept()
                     .expect("Failed to accept continous capture connection");
-
-                
 
                 loop {
                     let image = match image_stack.last() {
@@ -96,7 +93,6 @@ impl XabelFishEngine {
                         None => continue,
                     };
 
-                    
                     cont_capture
                         .send(&OcrMessage {
                             message_type:
@@ -112,7 +108,6 @@ impl XabelFishEngine {
                         cont_capture.recv().expect("Failed to receive response");
 
                     let ocr_result = response.text;
-                    
                 }
             }
         });
@@ -139,13 +134,10 @@ impl XabelFishEngine {
 
         thread::spawn(move || {
             loop {
-                
                 let mut cont_capture = cont_capture_control_listener
                     .accept()
                     .expect("Failed to accept continous capture connection");
 
-                
-                
                 cont_capture.send(&ContinuousCaptureMessage {
                     message_type:
                         xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType::StartCapture,
@@ -157,17 +149,11 @@ impl XabelFishEngine {
                     cont_capture.recv().expect("Failed to receive response");
 
                 match response.message_type {
-                    xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType::CaptureInitFail => {
-                        
-                    }
+                    xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType::CaptureInitFail => {}
                     xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType::CaptureInitSuccess => {
-                        
-
                         let mut data_client = UnixSocketClient::connect(&Path::new(&response.extra_str)).expect("Failed to connect data socket");
                         loop {
                             let data: ContinuousCaptureMessage = data_client.recv().expect("Failed to get data");
-
-                            
                             image_stack.push(data);
                         }
                     }
