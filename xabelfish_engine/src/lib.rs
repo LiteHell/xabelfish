@@ -22,17 +22,57 @@ use xabelfish_unix_socket::{
 
 use crate::max_sized_deque::RoughlySizeConstraintDeque;
 
+struct ListenerPidAndSockPath<T> {
+    pub process: Option<Pid>,
+    pub socket_path: Option<String>,
+    pub process_type: Option<T>,
+}
+
+impl<T> ListenerPidAndSockPath<T> {
+    pub fn none() -> Self {
+        Self {
+            process: None,
+            process_type: None,
+            socket_path: None,
+        }
+    }
+
+    pub fn create_process(exec_path: PathBuf, process_type: T) -> (UnixSocketServer, Self) {
+        let (mut translate_listener, socket_path) =
+            UnixSocketServer::create().expect("Failed to create control socket for translate");
+
+        let process = Command::new(exec_path.as_os_str())
+            .arg("--socket-path")
+            .arg(socket_path.clone())
+            .spawn()
+            .expect("Failed to run translate");
+
+        (
+            translate_listener,
+            Self {
+                process: Some(Pid::from_child(&process)),
+                process_type: Some(process_type),
+                socket_path: Some(socket_path),
+            },
+        )
+    }
+
+    pub fn kill(&mut self, sigkill: bool) -> rustix::io::Result<()> {
+        if let Some(pid) = self.process {
+            kill_process(pid, if sigkill { Signal::KILL } else { Signal::TERM })?;
+        }
+
+        Ok(())
+    }
+}
+
 pub struct XabelFishEngine {
     started: bool,
     stopping: Arc<AtomicBool>,
     executable_base_dir: PathBuf,
-    cont_capture_process: Option<Pid>,
-    ocr_process: Option<Pid>,
-    translate_process: Option<Pid>,
-    cont_capture_socket_path: Option<String>,
-    ocr_socket_path: Option<String>,
-    translate_socket_path: Option<String>,
-    ocr_type: String,
+    cont_capture_process: ListenerPidAndSockPath<()>,
+    ocr_process: ListenerPidAndSockPath<String>,
+    translate_process: ListenerPidAndSockPath<String>,
     translation_tw: Sender<String>,
     image_stack: Arc<RoughlySizeConstraintDeque<ContinuousCaptureMessage>>,
     ocr_stack: Arc<RoughlySizeConstraintDeque<String>>,
@@ -54,13 +94,9 @@ impl XabelFishEngine {
             started: false,
             stopping: Arc::new(AtomicBool::new(false)),
             executable_base_dir,
-            cont_capture_process: None,
-            ocr_process: None,
-            translate_process: None,
-            cont_capture_socket_path: None,
-            ocr_socket_path: None,
-            translate_socket_path: None,
-            ocr_type: String::new(),
+            cont_capture_process: ListenerPidAndSockPath::none(),
+            ocr_process: ListenerPidAndSockPath::none(),
+            translate_process: ListenerPidAndSockPath::none(),
             image_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
             ocr_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
             translation_tw: translation_tw.clone(),
@@ -88,26 +124,13 @@ impl XabelFishEngine {
     }
 
     fn start_translate(&mut self) {
-        let exec_path = Arc::new(
-            self.get_translate_executable_path()
-                .as_mut_os_string()
-                .clone(),
-        );
+        let exec_path = self.get_translate_executable_path();
 
-        let (mut translate_listener, translate_sock_path) =
-            UnixSocketServer::create().expect("Failed to create control socket for translate");
+        let (mut translate_listener, process_info) =
+            ListenerPidAndSockPath::create_process(exec_path, "deepL".to_string());
         let translation_tw = self.translation_tw.clone();
-        self.translate_socket_path = Some(translate_sock_path.clone());
+        self.translate_process = process_info;
 
-        let translate_process = Command::new(exec_path.as_os_str())
-            .arg("--socket-path")
-            .arg(translate_sock_path.clone())
-            .spawn()
-            .expect("Failed to run translate");
-
-        self.translate_process = Some(Pid::from_child(&translate_process));
-
-        let image_stack = self.image_stack.clone();
         let ocr_stack = self.ocr_stack.clone();
 
         thread::spawn(move || {
@@ -144,19 +167,12 @@ impl XabelFishEngine {
     }
 
     fn start_ocr(&mut self) {
-        let exec_path = Arc::new(self.get_ocr_executable_path().as_mut_os_string().clone());
+        let exec_path = self.get_ocr_executable_path();
 
-        let (mut ocr_listener, ocr_sock_path) =
-            UnixSocketServer::create().expect("Failed to create control socket for ocr");
+        let (mut ocr_listener, ocr_process_info) =
+            ListenerPidAndSockPath::create_process(exec_path, "tesseract".to_string());
 
-        let ocr_process = Command::new(exec_path.as_os_str())
-            .arg("--socket-path")
-            .arg(ocr_sock_path.clone())
-            .spawn()
-            .expect("Failed to run continous capture");
-
-        self.ocr_process = Some(Pid::from_child(&ocr_process));
-        self.ocr_socket_path = Some(ocr_sock_path.clone());
+        self.ocr_process = ocr_process_info;
 
         let image_stack = self.image_stack.clone();
         let ocr_stack = self.ocr_stack.clone();
@@ -194,28 +210,17 @@ impl XabelFishEngine {
     }
 
     fn start_capture(&mut self) {
-        let exec_path = Arc::new(
-            self.get_executable(PathBuf::from("xabelfish_cont_capture"))
-                .as_mut_os_string()
-                .clone(),
-        );
-        let (mut cont_capture_control_listener, cont_capture_control_sock_path) =
-            UnixSocketServer::create().expect("Failed to create control socket for capture");
+        let exec_path = self.get_executable(PathBuf::from("xabelfish_cont_capture"));
+        let (mut cont_capture_clistener, cont_capture_info) =
+            ListenerPidAndSockPath::create_process(exec_path, ());
 
-        let cont_capture_process = Command::new(exec_path.as_os_str())
-            .arg("--socket-path")
-            .arg(cont_capture_control_sock_path.clone())
-            .spawn()
-            .expect("Failed to run continous capture");
-
-        self.cont_capture_process = Some(Pid::from_child(&cont_capture_process));
-        self.cont_capture_socket_path = Some(cont_capture_control_sock_path.clone());
+        self.cont_capture_process = cont_capture_info;
 
         let image_stack = self.image_stack.clone();
 
         thread::spawn(move || {
             loop {
-                let mut cont_capture = cont_capture_control_listener
+                let mut cont_capture = cont_capture_clistener
                     .accept()
                     .expect("Failed to accept continous capture connection");
 
@@ -248,14 +253,8 @@ impl XabelFishEngine {
 impl Drop for XabelFishEngine {
     fn drop(&mut self) {
         self.stopping.store(true, Ordering::Relaxed);
-        if let Some(cont_capture_process) = self.cont_capture_process.as_mut() {
-            kill_process(*cont_capture_process, Signal::TERM);
-        }
-        if let Some(ocr_process) = self.ocr_process.as_mut() {
-            kill_process(*ocr_process, Signal::TERM);
-        }
-        if let Some(translate_process) = self.translate_process.as_mut() {
-            kill_process(*translate_process, Signal::TERM);
-        }
+        let _ = self.cont_capture_process.kill(true);
+        let _ = self.ocr_process.kill(true);
+        let _ = self.translate_process.kill(true);
     }
 }
