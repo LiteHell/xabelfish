@@ -14,6 +14,7 @@ use std::{
 };
 
 use rustix::process::{Pid, Signal, kill_process};
+use xabelfish_config::{XabelFishEngineConfig, ocr::OcrType, translator::TranslatorType};
 use xabelfish_socket_protocol::{
     cont_capture::ContinuousCaptureMessage,
     ocr::{OcrMessage, OcrRequestBody},
@@ -30,11 +31,12 @@ pub struct XabelFishEngine {
     stopping: Arc<AtomicBool>,
     executable_base_dir: PathBuf,
     cont_capture_process: Option<ListenerPidAndSockPath<()>>,
-    ocr_process: Option<ListenerPidAndSockPath<String>>,
-    translate_process: Option<ListenerPidAndSockPath<String>>,
+    ocr_process: Option<ListenerPidAndSockPath<OcrType>>,
+    translate_process: Option<ListenerPidAndSockPath<TranslatorType>>,
     translation_tw: Sender<String>,
     image_stack: Arc<RoughlySizeConstraintDeque<ContinuousCaptureMessage>>,
     ocr_stack: Arc<RoughlySizeConstraintDeque<String>>,
+    config: xabelfish_config::XabelFishEngineConfig
 }
 
 impl XabelFishEngine {
@@ -59,6 +61,31 @@ impl XabelFishEngine {
             image_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
             ocr_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
             translation_tw: translation_tw.clone(),
+            config: XabelFishEngineConfig::default()
+        }
+    }
+
+    pub fn config(&self) -> XabelFishEngineConfig {
+        self.config.clone()
+    }
+
+    pub fn set_config(&mut self, new_config: XabelFishEngineConfig) {
+        self.config = new_config;
+        let ocr_path = self.get_ocr_executable_path().clone();
+        let translator_path = self.get_translate_executable_path().clone();
+
+        if let Some(ocr_process) = &mut self.ocr_process {
+            let current_extra = ocr_process.extra().clone();
+            if current_extra != self.config.ocr_type {
+                ocr_process.change_process(ocr_path, self.config.ocr_type.clone());
+            }
+        }
+
+        if let Some(translator_process) = &mut self.translate_process {
+            let current_extra = translator_process.extra().clone();
+            if current_extra != self.config.translator_type {
+                translator_process.change_process(translator_path, self.config.translator_type.clone());
+            }
         }
     }
 
@@ -86,7 +113,7 @@ impl XabelFishEngine {
         let exec_path = self.get_translate_executable_path();
 
         let (mut translate_listener, process_info) =
-            ListenerPidAndSockPath::create_with_process(exec_path, "deepL".to_string());
+            ListenerPidAndSockPath::create_with_process(exec_path, self.config.translator_type.clone());
         let translation_tw = self.translation_tw.clone();
         self.translate_process = Some(process_info);
 
@@ -140,7 +167,7 @@ impl XabelFishEngine {
         let exec_path = self.get_ocr_executable_path();
 
         let (mut ocr_listener, ocr_process_info) =
-            ListenerPidAndSockPath::create_with_process(exec_path, "tesseract".to_string());
+            ListenerPidAndSockPath::create_with_process(exec_path, self.config.ocr_type.clone());
 
         self.ocr_process = Some(ocr_process_info);
 
