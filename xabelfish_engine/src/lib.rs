@@ -293,15 +293,15 @@ impl XabelFishEngine {
                         let mut data_client = UnixSocketClient::connect(&Path::new(&response.extra_str)).expect("Failed to connect data socket");
                         loop {
                             let data: ContinuousCaptureMessage = {
-                    let response = data_client.recv().expect("Failed to receive response");
+                                let response = data_client.recv().expect("Failed to receive response");
 
-                    if let Some(response) = response {
-                        response
-                    } else {
-                        continue;
-                    }
-                };
-                
+                                if let Some(response) = response {
+                                    response
+                                } else {
+                                    continue;
+                                }
+                            };
+                            
                             image_stack.push(data);
                         }
                     }
