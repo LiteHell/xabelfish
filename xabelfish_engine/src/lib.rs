@@ -12,6 +12,7 @@ use std::{
     thread,
 };
 
+use rustix::process::{Pid, Signal, kill_process};
 use xabelfish_socket_protocol::{
     cont_capture::ContinuousCaptureMessage, ocr::OcrMessage, translate::TranslateMessage,
 };
@@ -25,9 +26,9 @@ pub struct XabelFishEngine {
     started: bool,
     stopping: Arc<AtomicBool>,
     executable_base_dir: PathBuf,
-    cont_capture_process: Option<Child>,
-    ocr_process: Option<Child>,
-    translate_process: Option<Child>,
+    cont_capture_process: Option<Pid>,
+    ocr_process: Option<Pid>,
+    translate_process: Option<Pid>,
     cont_capture_socket_path: Option<String>,
     ocr_socket_path: Option<String>,
     translate_socket_path: Option<String>,
@@ -104,7 +105,7 @@ impl XabelFishEngine {
             .spawn()
             .expect("Failed to run translate");
 
-        self.translate_process = Some(translate_process);
+        self.translate_process = Some(Pid::from_child(&translate_process));
 
         let image_stack = self.image_stack.clone();
         let ocr_stack = self.ocr_stack.clone();
@@ -154,7 +155,7 @@ impl XabelFishEngine {
             .spawn()
             .expect("Failed to run continous capture");
 
-        self.ocr_process = Some(ocr_process);
+        self.ocr_process = Some(Pid::from_child(&ocr_process));
         self.ocr_socket_path = Some(ocr_sock_path.clone());
 
         let image_stack = self.image_stack.clone();
@@ -207,7 +208,7 @@ impl XabelFishEngine {
             .spawn()
             .expect("Failed to run continous capture");
 
-        self.cont_capture_process = Some(cont_capture_process);
+        self.cont_capture_process = Some(Pid::from_child(&cont_capture_process));
         self.cont_capture_socket_path = Some(cont_capture_control_sock_path.clone());
 
         let image_stack = self.image_stack.clone();
@@ -248,13 +249,13 @@ impl Drop for XabelFishEngine {
     fn drop(&mut self) {
         self.stopping.store(true, Ordering::Relaxed);
         if let Some(cont_capture_process) = self.cont_capture_process.as_mut() {
-            cont_capture_process.kill();
+            kill_process(*cont_capture_process, Signal::TERM);
         }
         if let Some(ocr_process) = self.ocr_process.as_mut() {
-            ocr_process.kill();
+            kill_process(*ocr_process, Signal::TERM);
         }
         if let Some(translate_process) = self.translate_process.as_mut() {
-            translate_process.kill();
+            kill_process(*translate_process, Signal::TERM);
         }
     }
 }

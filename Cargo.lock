@@ -3175,6 +3175,7 @@ dependencies = [
 name = "xabelfish_engine"
 version = "0.1.0"
 dependencies = [
+ "rustix",
  "xabelfish_socket_protocol",
  "xabelfish_unix_socket",
 ]
