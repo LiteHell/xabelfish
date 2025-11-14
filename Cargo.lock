@@ -3252,6 +3252,7 @@ version = "0.1.0"
 dependencies = [
  "clearscreen",
  "termcolor",
+ "xabelfish_config",
  "xabelfish_engine",
 ]
 
@@ -3293,6 +3294,7 @@ dependencies = [
  "clap 4.5.51",
  "image",
  "rusty-tesseract",
+ "xabelfish_config",
  "xabelfish_socket_protocol",
  "xabelfish_unix_socket",
 ]
@@ -3312,6 +3314,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "xabelfish_config",
  "xabelfish_socket_protocol",
  "xabelfish_unix_socket",
 ]

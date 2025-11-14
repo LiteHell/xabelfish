@@ -7,6 +7,9 @@ use xabelfish_engine::XabelFishEngine;
 fn main() {
     let (mut tx, rx) = mpsc::channel();
 
+    let config = xabelfish_config::XabelFishEngineConfig::get_config();
+    config.save();
+
     let mut engine = XabelFishEngine::new(&mut tx);
     engine.start_nonblocking();
 

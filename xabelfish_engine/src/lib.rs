@@ -6,11 +6,9 @@ use std::{
     path::{Path, PathBuf},
     process::{Child, Command},
     sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-        mpsc::{self, Sender},
+        Arc, RwLock, atomic::{AtomicBool, Ordering}, mpsc::{self, Sender}
     },
-    thread,
+    thread, time::Duration,
 };
 
 use rustix::process::{Pid, Signal, kill_process};
@@ -30,13 +28,12 @@ pub struct XabelFishEngine {
     started: bool,
     stopping: Arc<AtomicBool>,
     executable_base_dir: PathBuf,
-    cont_capture_process: Option<ListenerPidAndSockPath<()>>,
-    ocr_process: Option<ListenerPidAndSockPath<OcrType>>,
-    translate_process: Option<ListenerPidAndSockPath<TranslatorType>>,
+    cont_capture_process: Arc<RwLock<Option<ListenerPidAndSockPath<()>>>>,
+    ocr_process: Arc<RwLock<Option<ListenerPidAndSockPath<OcrType>>>>,
+    translate_process: Arc<RwLock<Option<ListenerPidAndSockPath<TranslatorType>>>>,
     translation_tw: Sender<String>,
     image_stack: Arc<RoughlySizeConstraintDeque<ContinuousCaptureMessage>>,
     ocr_stack: Arc<RoughlySizeConstraintDeque<String>>,
-    config: xabelfish_config::XabelFishEngineConfig
 }
 
 impl XabelFishEngine {
@@ -55,37 +52,12 @@ impl XabelFishEngine {
             started: false,
             stopping: Arc::new(AtomicBool::new(false)),
             executable_base_dir,
-            cont_capture_process: ListenerPidAndSockPath::none(),
-            ocr_process: ListenerPidAndSockPath::none(),
-            translate_process: ListenerPidAndSockPath::none(),
+            cont_capture_process: Arc::new(RwLock::new(ListenerPidAndSockPath::none())),
+            ocr_process: Arc::new(RwLock::new(ListenerPidAndSockPath::none())),
+            translate_process: Arc::new(RwLock::new(ListenerPidAndSockPath::none())),
             image_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
             ocr_stack: Arc::new(RoughlySizeConstraintDeque::new(10)),
             translation_tw: translation_tw.clone(),
-            config: XabelFishEngineConfig::default()
-        }
-    }
-
-    pub fn config(&self) -> XabelFishEngineConfig {
-        self.config.clone()
-    }
-
-    pub fn set_config(&mut self, new_config: XabelFishEngineConfig) {
-        self.config = new_config;
-        let ocr_path = self.get_ocr_executable_path().clone();
-        let translator_path = self.get_translate_executable_path().clone();
-
-        if let Some(ocr_process) = &mut self.ocr_process {
-            let current_extra = ocr_process.extra().clone();
-            if current_extra != self.config.ocr_type {
-                ocr_process.change_process(ocr_path, self.config.ocr_type.clone());
-            }
-        }
-
-        if let Some(translator_process) = &mut self.translate_process {
-            let current_extra = translator_process.extra().clone();
-            if current_extra != self.config.translator_type {
-                translator_process.change_process(translator_path, self.config.translator_type.clone());
-            }
         }
     }
 
@@ -109,18 +81,63 @@ impl XabelFishEngine {
         return self.get_executable(PathBuf::from("xabelfish_translate_deepl"));
     }
 
+    fn start_heartbeat(&mut self) {
+        let cont_capture_process = self.cont_capture_process.clone();
+        let ocr_process = self.ocr_process.clone();
+        let translate_process = self.translate_process.clone();
+        let stopping = self.stopping.clone();
+        let executable_base_dir = self.executable_base_dir.clone();
+        
+        thread::spawn(move || {
+            loop {
+                
+                if stopping.load(Ordering::Relaxed) {
+                    let mut cont_capture_process = cont_capture_process.write().unwrap();
+                    let mut ocr_process = ocr_process.write().unwrap();
+                    let mut translate_process = translate_process.write().unwrap();
+                    if let Some(ocr_process) = ocr_process.as_mut() {
+                        ocr_process.kill(true);
+                    }
+                    if let Some(translate_process) = translate_process.as_mut() {
+                        translate_process.kill(true);
+                    }
+                    if let Some(cont_capture_process) = cont_capture_process.as_mut() {
+                        cont_capture_process.kill(true);
+                    }
+
+                    break;
+                } else {
+                    let ocr_type = {
+                        ocr_process.read().unwrap().as_ref().map(|i| i.extra())
+                    };
+                    let translate_type = {
+                        translate_process.read().unwrap().as_ref().map(|i| i.extra())
+                    };
+                    
+                    // TO-DO: change process here
+                }
+
+                thread::sleep(Duration::from_millis(100));
+            }
+        });
+    }
+
     fn start_translate(&mut self) {
         let exec_path = self.get_translate_executable_path();
 
         let (mut translate_listener, process_info) =
-            ListenerPidAndSockPath::create_with_process(exec_path, self.config.translator_type.clone());
+            ListenerPidAndSockPath::create_with_process(exec_path, XabelFishEngineConfig::get_config().translator_type.clone());
         let translation_tw = self.translation_tw.clone();
-        self.translate_process = Some(process_info);
+        *self.translate_process.write().unwrap() = Some(process_info);
 
         let ocr_stack = self.ocr_stack.clone();
+        let stopping = self.stopping.clone();
 
         thread::spawn(move || {
             'accept_loop: loop {
+                if stopping.load(Ordering::Relaxed) {
+                    return;
+                }
                 let mut translate_socket = translate_listener
                     .accept()
                     .expect("Failed to accept continous capture connection");
@@ -133,7 +150,7 @@ impl XabelFishEngine {
 
                     translate_socket
                         .send(&TranslateMessage::TranslationRequest(xabelfish_socket_protocol::translate::TranslationRequestBody  {
-                            config: String::new(),
+                            config: XabelFishEngineConfig::get_config().get_translator_config_string(),
                             texts: vec![ocr_text],
                             dst: String::from("ko"),
                             src:  xabelfish_socket_protocol::translate::TranslateSourceLanguage::Automatic
@@ -167,15 +184,20 @@ impl XabelFishEngine {
         let exec_path = self.get_ocr_executable_path();
 
         let (mut ocr_listener, ocr_process_info) =
-            ListenerPidAndSockPath::create_with_process(exec_path, self.config.ocr_type.clone());
+            ListenerPidAndSockPath::create_with_process(exec_path, XabelFishEngineConfig::get_config().ocr_type.clone());
 
-        self.ocr_process = Some(ocr_process_info);
+        *self.ocr_process.write().unwrap() = Some(ocr_process_info);
 
         let image_stack = self.image_stack.clone();
         let ocr_stack = self.ocr_stack.clone();
 
+        let stopping = self.stopping.clone();
+
         thread::spawn(move || {
             'accept_loop: loop {
+                if stopping.load(Ordering::Relaxed) {
+                    return;
+                }
                 let mut ocr_socket = ocr_listener
                     .accept()
                     .expect("Failed to accept continous capture connection");
@@ -188,7 +210,7 @@ impl XabelFishEngine {
 
                     ocr_socket
                         .send(&OcrMessage::OcrRequest(OcrRequestBody {
-                            config: String::new(),
+                            config: XabelFishEngineConfig::get_config().get_ocr_config_string(),
                             image_bytes: image.extra_bytes,
                             image_type: image.extra_str,
                         }))
@@ -222,7 +244,7 @@ impl XabelFishEngine {
         let (mut cont_capture_clistener, cont_capture_info) =
             ListenerPidAndSockPath::create_with_process(exec_path, ());
 
-        self.cont_capture_process = Some(cont_capture_info);
+        *self.cont_capture_process.write().unwrap() = Some(cont_capture_info);
 
         let image_stack = self.image_stack.clone();
 
@@ -250,7 +272,6 @@ impl XabelFishEngine {
                 };
 
                 match response.message_type {
-                    xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType::CaptureInitFail => {}
                     xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType::CaptureInitSuccess => {
                         let mut data_client = UnixSocketClient::connect(&Path::new(&response.extra_str)).expect("Failed to connect data socket");
                         loop {
@@ -267,7 +288,7 @@ impl XabelFishEngine {
                             image_stack.push(data);
                         }
                     }
-                    _ => {}
+                    _ => break
                 }
             }
         });
@@ -276,15 +297,6 @@ impl XabelFishEngine {
 
 impl Drop for XabelFishEngine {
     fn drop(&mut self) {
-        self.stopping.store(true, Ordering::Relaxed);
-        if let Some(process) = &mut self.cont_capture_process {
-            process.kill(true);
-        }
-        if let Some(process) = &mut self.ocr_process {
-            process.kill(true);
-        }
-        if let Some(process) = &mut self.translate_process {
-            process.kill(true);
-        }
+        self.stopping.store(true, Ordering::Relaxed)
     }
 }

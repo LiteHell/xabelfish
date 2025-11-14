@@ -2,6 +2,7 @@ use std::path::Path;
 
 use clap::Parser;
 use serde::{Deserialize, Serialize};
+use xabelfish_config::translator::DeepLConfig;
 use xabelfish_socket_protocol::translate::{TranslateMessage, TranslateSourceLanguage};
 use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 
@@ -47,6 +48,7 @@ fn main() {
         };
         match request {
             TranslateMessage::TranslationRequest(request) => {
+                let config = DeepLConfig::from_toml(&request.config);
                 let request_body = serde_json::to_string(&DeepLTranslateRequestBody {
                     target_lang: String::from("ko"),
                     text: request.texts.clone(),
@@ -57,7 +59,7 @@ fn main() {
                     .post("https://api-free.deepl.com/v2/translate")
                     .header(
                         "Authorization",
-                        format!("DeepL-Auth-Key {}", std::env::var("DEEPL_API_KEY").unwrap()),
+                        format!("DeepL-Auth-Key {}", config.api_key),
                     )
                     .header("User-Agent", "XabelFish/0.1.0")
                     .header("Content-Type", "application/json")

@@ -4,6 +4,7 @@ use std::path::Path;
 
 use clap::Parser;
 use rusty_tesseract::Image;
+use xabelfish_config::ocr::TesseractConfig;
 use xabelfish_socket_protocol::ocr::OcrMessage;
 use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 
@@ -32,6 +33,7 @@ fn main() {
 
         match request {
             OcrMessage::OcrRequest(request) => {
+                let config = TesseractConfig::from_toml(&request.config);
                 let dynamic_image =
                     image::ImageReader::new(Cursor::new(request.image_bytes.as_slice()))
                         .with_guessed_format()
@@ -41,11 +43,11 @@ fn main() {
                 let image = Image::from_dynamic_image(&dynamic_image).unwrap();
 
                 let tesseract_args = rusty_tesseract::Args {
-                    lang: "jpn".to_string(),
-                    dpi: Some(150),
-                    psm: Some(3),
-                    oem: Some(3),
-                    config_variables: HashMap::new(),
+                    lang: config.data_lang,
+                    dpi: config.dpi,
+                    psm: config.psm,
+                    oem: config.oem,
+                    config_variables: config.config_variables,
                 };
 
                 let result = rusty_tesseract::image_to_string(&image, &tesseract_args).unwrap();

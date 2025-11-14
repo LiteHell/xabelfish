@@ -9,3 +9,4 @@ xabelfish_unix_socket = { version = "0.1.0", path = "../xabelfish_unix_socket" }
 xabelfish_socket_protocol = { version = "0.1.0", path = "../xabelfish_socket_protocol" }
 rusty-tesseract = "1.1.10"
 image = "0.25.8"
+xabelfish_config = { version = "0.1.0", path = "../xabelfish_config" }
