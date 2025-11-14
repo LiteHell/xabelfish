@@ -94,7 +94,7 @@ impl XabelFishEngine {
 
         thread::spawn(move || {
             'accept_loop: loop {
-                let mut cont_capture = translate_listener
+                let mut translate_socket = translate_listener
                     .accept()
                     .expect("Failed to accept continous capture connection");
 
@@ -104,7 +104,7 @@ impl XabelFishEngine {
                         None => continue,
                     };
 
-                    cont_capture
+                    translate_socket
                         .send(&TranslateMessage::TranslationRequest(xabelfish_socket_protocol::translate::TranslationRequestBody  {
                             config: String::new(),
                             texts: vec![ocr_text],
@@ -114,11 +114,11 @@ impl XabelFishEngine {
                         .expect("Failed to send translate req command");
 
                     let response: TranslateMessage = {
-                        let response = cont_capture.recv().expect("Failed to receive response");
+                        let response = translate_socket.recv().expect("Failed to receive response");
 
                         if let Some(response) = response {
                             response
-                        } else if cont_capture.is_closed() {
+                        } else if translate_socket.is_closed() {
                             continue 'accept_loop;
                         } else {
                             panic!("Response receive feailure");
@@ -149,7 +149,7 @@ impl XabelFishEngine {
 
         thread::spawn(move || {
             'accept_loop: loop {
-                let mut cont_capture = ocr_listener
+                let mut ocr_socket = ocr_listener
                     .accept()
                     .expect("Failed to accept continous capture connection");
 
@@ -159,7 +159,7 @@ impl XabelFishEngine {
                         None => continue,
                     };
 
-                    cont_capture
+                    ocr_socket
                         .send(&OcrMessage::OcrRequest(OcrRequestBody {
                             config: String::new(),
                             image_bytes: image.extra_bytes,
@@ -168,11 +168,11 @@ impl XabelFishEngine {
                         .expect("Failed to send ocr req command");
 
                     let response: OcrMessage = {
-                        let response = cont_capture.recv().expect("Failed to receive response");
+                        let response = ocr_socket.recv().expect("Failed to receive response");
 
                         if let Some(response) = response {
                             response
-                        } else if cont_capture.is_closed() {
+                        } else if ocr_socket.is_closed() {
                             continue 'accept_loop;
                         } else {
                             panic!("Response receive feailure");
