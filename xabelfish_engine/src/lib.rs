@@ -1,5 +1,6 @@
 mod max_sized_deque;
 mod listener_pid_and_sock_path;
+mod executable_paths;
 
 use std::{
     env::current_exe,
@@ -22,12 +23,11 @@ use xabelfish_unix_socket::{
     unix_socket_client::UnixSocketClient, unix_socket_server::UnixSocketServer,
 };
 
-use crate::{listener_pid_and_sock_path::ListenerPidAndSockPath, max_sized_deque::RoughlySizeConstraintDeque};
+use crate::{executable_paths::{get_cont_capture, get_ocr, get_translator}, listener_pid_and_sock_path::ListenerPidAndSockPath, max_sized_deque::RoughlySizeConstraintDeque};
 
 pub struct XabelFishEngine {
     started: bool,
     stopping: Arc<AtomicBool>,
-    executable_base_dir: PathBuf,
     cont_capture_process: Arc<RwLock<Option<ListenerPidAndSockPath<()>>>>,
     ocr_process: Arc<RwLock<Option<ListenerPidAndSockPath<OcrType>>>>,
     translate_process: Arc<RwLock<Option<ListenerPidAndSockPath<TranslatorType>>>>,
@@ -37,21 +37,13 @@ pub struct XabelFishEngine {
 }
 
 impl XabelFishEngine {
-    fn get_executable(&self, name: PathBuf) -> PathBuf {
-        self.executable_base_dir.join(name)
-    }
 
     pub fn new(translation_tw: &mut mpsc::Sender<String>) -> Self {
-        let executable_base_dir = {
-            let mut exe_path = current_exe().unwrap();
-            exe_path.pop();
-            exe_path
-        };
+        
 
         Self {
             started: false,
             stopping: Arc::new(AtomicBool::new(false)),
-            executable_base_dir,
             cont_capture_process: Arc::new(RwLock::new(ListenerPidAndSockPath::none())),
             ocr_process: Arc::new(RwLock::new(ListenerPidAndSockPath::none())),
             translate_process: Arc::new(RwLock::new(ListenerPidAndSockPath::none())),
@@ -73,20 +65,11 @@ impl XabelFishEngine {
         self.start_translate();
     }
 
-    fn get_ocr_executable_path(&self) -> PathBuf {
-        return self.get_executable(PathBuf::from("xabelfish_ocr_tesseract"));
-    }
-
-    fn get_translate_executable_path(&self) -> PathBuf {
-        return self.get_executable(PathBuf::from("xabelfish_translate_deepl"));
-    }
-
     fn start_heartbeat(&mut self) {
         let cont_capture_process = self.cont_capture_process.clone();
         let ocr_process = self.ocr_process.clone();
         let translate_process = self.translate_process.clone();
         let stopping = self.stopping.clone();
-        let executable_base_dir = self.executable_base_dir.clone();
         
         thread::spawn(move || {
             loop {
@@ -123,7 +106,7 @@ impl XabelFishEngine {
     }
 
     fn start_translate(&mut self) {
-        let exec_path = self.get_translate_executable_path();
+        let exec_path = get_translator();
 
         let (mut translate_listener, process_info) =
             ListenerPidAndSockPath::create_with_process(exec_path, XabelFishEngineConfig::get_config().translator_type.clone());
@@ -181,7 +164,7 @@ impl XabelFishEngine {
     }
 
     fn start_ocr(&mut self) {
-        let exec_path = self.get_ocr_executable_path();
+        let exec_path = get_ocr();
 
         let (mut ocr_listener, ocr_process_info) =
             ListenerPidAndSockPath::create_with_process(exec_path, XabelFishEngineConfig::get_config().ocr_type.clone());
@@ -240,7 +223,7 @@ impl XabelFishEngine {
     }
 
     fn start_capture(&mut self) {
-        let exec_path = self.get_executable(PathBuf::from("xabelfish_cont_capture"));
+        let exec_path = get_cont_capture();
         let (mut cont_capture_clistener, cont_capture_info) =
             ListenerPidAndSockPath::create_with_process(exec_path, ());
 
