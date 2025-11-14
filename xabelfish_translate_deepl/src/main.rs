@@ -38,35 +38,39 @@ fn main() {
     let http_client = reqwest::blocking::Client::new();
     loop {
         let request: TranslateMessage = client.recv().expect("Failed to get request");
-        let request_body = serde_json::to_string(&DeepLTranslateRequestBody {
-            target_lang: String::from("ko"),
-            text: vec![request.data_text.clone()],
-        })
-        .unwrap();
+        match request {
+            TranslateMessage::TranslationRequest(request) => {
+                let request_body = serde_json::to_string(&DeepLTranslateRequestBody {
+                    target_lang: String::from("ko"),
+                    text: request.texts.clone(),
+                })
+                .unwrap();
 
-        let http_response = http_client
-            .post("https://api-free.deepl.com/v2/translate")
-            .header(
-                "Authorization",
-                format!("DeepL-Auth-Key {}", std::env::var("DEEPL_API_KEY").unwrap()),
-            )
-            .header("User-Agent", "XabelFish/0.1.0")
-            .header("Content-Type", "application/json")
-            .body(request_body)
-            .send()
-            .unwrap();
+                let http_response = http_client
+                    .post("https://api-free.deepl.com/v2/translate")
+                    .header(
+                        "Authorization",
+                        format!("DeepL-Auth-Key {}", std::env::var("DEEPL_API_KEY").unwrap()),
+                    )
+                    .header("User-Agent", "XabelFish/0.1.0")
+                    .header("Content-Type", "application/json")
+                    .body(request_body)
+                    .send()
+                    .unwrap();
 
-        let response_text = http_response.text().unwrap();
-        let response_parsed: DeepLTranslateResponse = serde_json::from_str(&response_text).unwrap();
+                let response_text = http_response.text().unwrap();
+                let response_parsed: DeepLTranslateResponse =
+                    serde_json::from_str(&response_text).unwrap();
 
-        client.send(&TranslateMessage {
-            message_type:
-                xabelfish_socket_protocol::translate::TranslateMessageType::TranslateResponse,
-            config: String::new(),
-            data_bool: false,
-            data_text: response_parsed.translations[0].text.clone(),
-            dst: String::new(),
-            src: TranslateSourceLanguage::Automatic,
-        });
+                client.send(&TranslateMessage::TranslationResponse(
+                    response_parsed
+                        .translations
+                        .iter()
+                        .map(|i| i.text.clone())
+                        .collect(),
+                ));
+            }
+            _ => continue,
+        }
     }
 }

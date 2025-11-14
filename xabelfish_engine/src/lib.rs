@@ -148,21 +148,23 @@ impl XabelFishEngine {
                     };
 
                     cont_capture
-                        .send(&TranslateMessage {
-                            message_type:
-                                xabelfish_socket_protocol::translate::TranslateMessageType::TranslateRequest,
+                        .send(&TranslateMessage::TranslationRequest(xabelfish_socket_protocol::translate::TranslationRequestBody  {
                             config: String::new(),
-                            data_bool: false,
-                            data_text: ocr_text,
+                            texts: vec![ocr_text],
                             dst: String::from("ko"),
                             src:  xabelfish_socket_protocol::translate::TranslateSourceLanguage::Automatic
-                        })
+                        }))
                         .expect("Failed to send translate req command");
 
                     let response: TranslateMessage =
                         cont_capture.recv().expect("Failed to receive response");
 
-                    translation_tw.send(response.data_text);
+                    match response {
+                        TranslateMessage::TranslationResponse(strings) => {
+                            translation_tw.send(strings[0].clone());
+                        }
+                        _ => continue,
+                    }
                 }
             }
         });
