@@ -24,22 +24,24 @@ use xabelfish_unix_socket::{
 
 use crate::max_sized_deque::RoughlySizeConstraintDeque;
 
-struct ListenerPidAndSockPath<T> {
-    pub process: Option<Pid>,
-    pub socket_path: Option<String>,
-    pub process_type: Option<T>,
+struct ListenerPidAndSockPath<T>
+where
+    T: Clone,
+{
+    process: Pid,
+    socket_path: String,
+    extra: T,
 }
 
-impl<T> ListenerPidAndSockPath<T> {
-    pub fn none() -> Self {
-        Self {
-            process: None,
-            process_type: None,
-            socket_path: None,
-        }
+impl<T> ListenerPidAndSockPath<T>
+where
+    T: Clone,
+{
+    pub fn none() -> Option<Self> {
+        None
     }
 
-    pub fn create_process(exec_path: PathBuf, process_type: T) -> (UnixSocketServer, Self) {
+    pub fn create_process(exec_path: PathBuf, extra: T) -> (UnixSocketServer, Self) {
         let (mut translate_listener, socket_path) =
             UnixSocketServer::create().expect("Failed to create control socket for translate");
 
@@ -52,17 +54,37 @@ impl<T> ListenerPidAndSockPath<T> {
         (
             translate_listener,
             Self {
-                process: Some(Pid::from_child(&process)),
-                process_type: Some(process_type),
-                socket_path: Some(socket_path),
+                process: (Pid::from_child(&process)),
+                extra: (extra),
+                socket_path: (socket_path),
             },
         )
     }
 
+    pub fn extra(&self) -> T {
+        self.extra.clone()
+    }
+
+    pub fn change_process(&mut self, exec_path: PathBuf, new_extra: T) {
+        self.kill(false);
+
+        let socket_path = self.socket_path.clone();
+
+        let process = Command::new(exec_path.as_os_str())
+            .arg("--socket-path")
+            .arg(socket_path.clone())
+            .spawn()
+            .expect("Failed to run translate");
+
+        self.process = Pid::from_child(&process);
+        self.extra = new_extra;
+    }
+
     pub fn kill(&mut self, sigkill: bool) -> rustix::io::Result<()> {
-        if let Some(pid) = self.process {
-            kill_process(pid, if sigkill { Signal::KILL } else { Signal::TERM })?;
-        }
+        kill_process(
+            self.process,
+            if sigkill { Signal::KILL } else { Signal::TERM },
+        )?;
 
         Ok(())
     }
@@ -72,9 +94,9 @@ pub struct XabelFishEngine {
     started: bool,
     stopping: Arc<AtomicBool>,
     executable_base_dir: PathBuf,
-    cont_capture_process: ListenerPidAndSockPath<()>,
-    ocr_process: ListenerPidAndSockPath<String>,
-    translate_process: ListenerPidAndSockPath<String>,
+    cont_capture_process: Option<ListenerPidAndSockPath<()>>,
+    ocr_process: Option<ListenerPidAndSockPath<String>>,
+    translate_process: Option<ListenerPidAndSockPath<String>>,
     translation_tw: Sender<String>,
     image_stack: Arc<RoughlySizeConstraintDeque<ContinuousCaptureMessage>>,
     ocr_stack: Arc<RoughlySizeConstraintDeque<String>>,
@@ -131,12 +153,12 @@ impl XabelFishEngine {
         let (mut translate_listener, process_info) =
             ListenerPidAndSockPath::create_process(exec_path, "deepL".to_string());
         let translation_tw = self.translation_tw.clone();
-        self.translate_process = process_info;
+        self.translate_process = Some(process_info);
 
         let ocr_stack = self.ocr_stack.clone();
 
         thread::spawn(move || {
-            loop {
+            'accept_loop: loop {
                 let mut cont_capture = translate_listener
                     .accept()
                     .expect("Failed to accept continous capture connection");
@@ -156,8 +178,17 @@ impl XabelFishEngine {
                         }))
                         .expect("Failed to send translate req command");
 
-                    let response: TranslateMessage =
-                        cont_capture.recv().expect("Failed to receive response");
+                    let response: TranslateMessage = {
+                        let response = cont_capture.recv().expect("Failed to receive response");
+
+                        if let Some(response) = response {
+                            response
+                        } else if cont_capture.is_closed() {
+                            continue 'accept_loop;
+                        } else {
+                            panic!("Response receive feailure");
+                        }
+                    };
 
                     match response {
                         TranslateMessage::TranslationResponse(strings) => {
@@ -176,13 +207,13 @@ impl XabelFishEngine {
         let (mut ocr_listener, ocr_process_info) =
             ListenerPidAndSockPath::create_process(exec_path, "tesseract".to_string());
 
-        self.ocr_process = ocr_process_info;
+        self.ocr_process = Some(ocr_process_info);
 
         let image_stack = self.image_stack.clone();
         let ocr_stack = self.ocr_stack.clone();
 
         thread::spawn(move || {
-            loop {
+            'accept_loop: loop {
                 let mut cont_capture = ocr_listener
                     .accept()
                     .expect("Failed to accept continous capture connection");
@@ -201,8 +232,17 @@ impl XabelFishEngine {
                         }))
                         .expect("Failed to send ocr req command");
 
-                    let response: OcrMessage =
-                        cont_capture.recv().expect("Failed to receive response");
+                    let response: OcrMessage = {
+                        let response = cont_capture.recv().expect("Failed to receive response");
+
+                        if let Some(response) = response {
+                            response
+                        } else if cont_capture.is_closed() {
+                            continue 'accept_loop;
+                        } else {
+                            panic!("Response receive feailure");
+                        }
+                    };
 
                     match response {
                         OcrMessage::OcrTextResponseBody(text) => {
@@ -220,7 +260,7 @@ impl XabelFishEngine {
         let (mut cont_capture_clistener, cont_capture_info) =
             ListenerPidAndSockPath::create_process(exec_path, ());
 
-        self.cont_capture_process = cont_capture_info;
+        self.cont_capture_process = Some(cont_capture_info);
 
         let image_stack = self.image_stack.clone();
 
@@ -237,15 +277,31 @@ impl XabelFishEngine {
                     extra_str: String::new(),
                 }).expect("Failed to send init command");
 
-                let response: ContinuousCaptureMessage =
-                    cont_capture.recv().expect("Failed to receive response");
+                let response: ContinuousCaptureMessage = {
+                    let response = cont_capture.recv().expect("Failed to receive response");
+
+                    if let Some(response) = response {
+                        response
+                    } else {
+                        continue;
+                    }
+                };
 
                 match response.message_type {
                     xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType::CaptureInitFail => {}
                     xabelfish_socket_protocol::cont_capture::ContinuousCaptureMessageType::CaptureInitSuccess => {
                         let mut data_client = UnixSocketClient::connect(&Path::new(&response.extra_str)).expect("Failed to connect data socket");
                         loop {
-                            let data: ContinuousCaptureMessage = data_client.recv().expect("Failed to get data");
+                            let data: ContinuousCaptureMessage = {
+                    let response = data_client.recv().expect("Failed to receive response");
+
+                    if let Some(response) = response {
+                        response
+                    } else {
+                        continue;
+                    }
+                };
+                
                             image_stack.push(data);
                         }
                     }
@@ -259,8 +315,14 @@ impl XabelFishEngine {
 impl Drop for XabelFishEngine {
     fn drop(&mut self) {
         self.stopping.store(true, Ordering::Relaxed);
-        let _ = self.cont_capture_process.kill(true);
-        let _ = self.ocr_process.kill(true);
-        let _ = self.translate_process.kill(true);
+        if let Some(process) = &mut self.cont_capture_process {
+            process.kill(true);
+        }
+        if let Some(process) = &mut self.ocr_process {
+            process.kill(true);
+        }
+        if let Some(process) = &mut self.translate_process {
+            process.kill(true);
+        }
     }
 }

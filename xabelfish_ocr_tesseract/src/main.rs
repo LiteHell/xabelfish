@@ -21,7 +21,14 @@ fn main() {
         UnixSocketClient::connect(Path::new(&args.socket_path)).expect("Failed to connect socket");
 
     loop {
-        let request: OcrMessage = client.recv().expect("Failed to get request");
+        let request: OcrMessage = {
+            let request = client.recv().expect("Failed to get request");
+            if let Some(request) = request {
+                request
+            } else {
+                continue;
+            }
+        };
 
         match request {
             OcrMessage::OcrRequest(request) => {

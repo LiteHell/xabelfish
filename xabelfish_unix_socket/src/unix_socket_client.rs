@@ -47,22 +47,30 @@ impl UnixSocketClient {
         Ok(())
     }
 
-    pub fn recv<'de, T>(&mut self) -> Result<T, Error>
+    pub fn recv<'de, T>(&mut self) -> Result<Option<T>, Error>
     where
         T: DeserializeOwned,
     {
-        let data = self.recv_vec()?;
+        let data = {
+            let recv_result = self.recv_vec()?;
+            if let Some(vec) = recv_result {
+                vec
+            } else {
+                return Ok(None);
+            }
+        };
+
         let slice = data.as_slice();
 
         let deserialized = bson::deserialize_from_slice(slice).expect("Failed to deserialize bson");
-        Ok(deserialized)
+        Ok(Some(deserialized))
     }
 
-    fn is_closed(&self) -> bool {
+    pub fn is_closed(&self) -> bool {
         self.closed
     }
 
-    fn recv_data_len(&mut self) -> Result<usize, Error> {
+    fn recv_data_len(&mut self) -> Result<Option<usize>, Error> {
         let len_byte_count: usize = (usize::BITS / 8).try_into().unwrap();
         let mut buffer = [0; 8];
         let mut total_read_byte_count: usize = 0;
@@ -74,16 +82,22 @@ impl UnixSocketClient {
 
             if byte_count_read == 0 {
                 self.closed = true;
+                return Ok(None);
             }
 
             total_read_byte_count += byte_count_read;
         }
 
-        Ok(usize::from_ne_bytes(buffer))
+        Ok(Some(usize::from_ne_bytes(buffer)))
     }
 
-    fn recv_to(&mut self, vec: &mut Vec<u8>) -> Result<(), Error> {
-        let data_len = self.recv_data_len()?;
+    fn recv_to(&mut self, vec: &mut Vec<u8>) -> Result<Option<()>, Error> {
+        let data_len_option = self.recv_data_len()?;
+        let data_len = if let Some(data_len) = data_len_option {
+            data_len
+        } else {
+            return Ok(None);
+        };
         let mut total_read_byte_count: usize = 0;
 
         while total_read_byte_count < data_len {
@@ -93,18 +107,27 @@ impl UnixSocketClient {
 
             let read_byte_count = self.stream.read(&mut buffer[0..bytes_to_read])?;
 
+            if read_byte_count == 0 {
+                self.closed = true;
+                return Ok(None);
+            }
+
             total_read_byte_count += read_byte_count;
             vec.extend_from_slice(&buffer[0..read_byte_count]);
         }
 
-        Ok(())
+        Ok(Some(()))
     }
 
-    fn recv_vec(&mut self) -> Result<Vec<u8>, Error> {
+    fn recv_vec(&mut self) -> Result<Option<Vec<u8>>, Error> {
         let mut vec = Vec::new();
-        self.recv_to(&mut vec)?;
+        let success = self.recv_to(&mut vec)?;
 
-        Ok(vec)
+        if success.is_some() {
+            Ok(Some(vec))
+        } else {
+            Ok(None)
+        }
     }
 }
 

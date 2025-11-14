@@ -36,10 +36,20 @@ fn main() {
         // Loop for listening control command
         'listen_request_control: loop {
             // Handle invalid command
-            let command = match socket.recv::<ContinuousCaptureMessage>() {
-                Ok(parsed) => parsed,
-                Err(err) => {
-                    let _ = socket.send(&ContinuousCaptureMessage::invalid_message());
+            let command = {
+                let message = match socket.recv::<ContinuousCaptureMessage>() {
+                    Ok(parsed) => parsed,
+                    Err(err) => {
+                        let _ = socket.send(&ContinuousCaptureMessage::invalid_message());
+                        continue 'listen_request_control;
+                    }
+                };
+
+                if let Some(message) = message {
+                    message
+                } else if socket.is_closed() {
+                    continue 'connect_control_server;
+                } else {
                     continue 'listen_request_control;
                 }
             };

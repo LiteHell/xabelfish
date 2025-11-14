@@ -37,7 +37,14 @@ fn main() {
 
     let http_client = reqwest::blocking::Client::new();
     loop {
-        let request: TranslateMessage = client.recv().expect("Failed to get request");
+        let request: TranslateMessage = {
+            let request = client.recv().expect("Failed to get request");
+            if let Some(request) = request {
+                request
+            } else {
+                continue;
+            }
+        };
         match request {
             TranslateMessage::TranslationRequest(request) => {
                 let request_body = serde_json::to_string(&DeepLTranslateRequestBody {
