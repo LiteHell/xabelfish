@@ -14,7 +14,9 @@ use std::{
 
 use rustix::process::{Pid, Signal, kill_process};
 use xabelfish_socket_protocol::{
-    cont_capture::ContinuousCaptureMessage, ocr::OcrMessage, translate::TranslateMessage,
+    cont_capture::ContinuousCaptureMessage,
+    ocr::{OcrMessage, OcrRequestBody},
+    translate::TranslateMessage,
 };
 use xabelfish_unix_socket::{
     unix_socket_client::UnixSocketClient, unix_socket_server::UnixSocketServer,
@@ -190,20 +192,22 @@ impl XabelFishEngine {
                     };
 
                     cont_capture
-                        .send(&OcrMessage {
-                            message_type:
-                                xabelfish_socket_protocol::ocr::OcrMessageType::OcrRequest,
+                        .send(&OcrMessage::OcrRequest(OcrRequestBody {
                             config: String::new(),
-                            text: String::new(),
                             image_bytes: image.extra_bytes,
                             image_type: image.extra_str,
-                        })
+                        }))
                         .expect("Failed to send ocr req command");
 
                     let response: OcrMessage =
                         cont_capture.recv().expect("Failed to receive response");
 
-                    ocr_stack.push(response.text);
+                    match response {
+                        OcrMessage::OcrTextResponseBody(text) => {
+                            ocr_stack.push(text);
+                        }
+                        _ => todo!("not supported yet..."),
+                    }
                 }
             }
         });

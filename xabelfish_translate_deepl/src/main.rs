@@ -2,10 +2,7 @@ use std::path::Path;
 
 use clap::Parser;
 use serde::{Deserialize, Serialize};
-use xabelfish_socket_protocol::{
-    ocr::{OcrMessage, OcrMessageType},
-    translate::{TranslateMessage, TranslateSourceLanguage},
-};
+use xabelfish_socket_protocol::translate::{TranslateMessage, TranslateSourceLanguage};
 use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 
 #[derive(Parser, Debug)]

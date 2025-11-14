@@ -1,16 +1,23 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum OcrMessageType {
-    OcrRequest,
-    OcrResponse,
+pub struct OcrRequestBody {
+    pub config: String,
+    pub image_type: String,
+    pub image_bytes: Vec<u8>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OcrBoundedBoxText {
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+    pub text: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct OcrMessage {
-    pub message_type: OcrMessageType,
-    pub config: String,
-    pub text: String,
-    pub image_type: String,
-    pub image_bytes: Vec<u8>,
+pub enum OcrMessage {
+    OcrRequest(OcrRequestBody),
+    OcrTextResponseBody(String),
+    OcrBoundedBoxText(Vec<OcrBoundedBoxText>),
 }

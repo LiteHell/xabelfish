@@ -5,7 +5,6 @@ use std::path::Path;
 use clap::Parser;
 use rusty_tesseract::Image;
 use xabelfish_socket_protocol::ocr::OcrMessage;
-use xabelfish_socket_protocol::ocr::OcrMessageType;
 use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 
 #[derive(Parser, Debug)]
@@ -24,31 +23,31 @@ fn main() {
     loop {
         let request: OcrMessage = client.recv().expect("Failed to get request");
 
-        let dynamic_image = image::ImageReader::new(Cursor::new(request.image_bytes.as_slice()))
-            .with_guessed_format()
-            .unwrap()
-            .decode()
-            .unwrap();
-        let image = Image::from_dynamic_image(&dynamic_image).unwrap();
+        match request {
+            OcrMessage::OcrRequest(request) => {
+                let dynamic_image =
+                    image::ImageReader::new(Cursor::new(request.image_bytes.as_slice()))
+                        .with_guessed_format()
+                        .unwrap()
+                        .decode()
+                        .unwrap();
+                let image = Image::from_dynamic_image(&dynamic_image).unwrap();
 
-        let tesseract_args = rusty_tesseract::Args {
-            lang: "jpn".to_string(),
-            dpi: Some(150),
-            psm: Some(3),
-            oem: Some(3),
-            config_variables: HashMap::new(),
-        };
+                let tesseract_args = rusty_tesseract::Args {
+                    lang: "jpn".to_string(),
+                    dpi: Some(150),
+                    psm: Some(3),
+                    oem: Some(3),
+                    config_variables: HashMap::new(),
+                };
 
-        let result = rusty_tesseract::image_to_string(&image, &tesseract_args).unwrap();
+                let result = rusty_tesseract::image_to_string(&image, &tesseract_args).unwrap();
 
-        client
-            .send(&OcrMessage {
-                config: String::new(),
-                image_bytes: Vec::new(),
-                image_type: String::new(),
-                message_type: OcrMessageType::OcrResponse,
-                text: result,
-            })
-            .unwrap();
+                client
+                    .send(&OcrMessage::OcrTextResponseBody(result))
+                    .unwrap();
+            }
+            _ => continue,
+        }
     }
 }
