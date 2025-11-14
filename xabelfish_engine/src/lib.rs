@@ -1,4 +1,5 @@
 mod max_sized_deque;
+mod listener_pid_and_sock_path;
 
 use std::{
     env::current_exe,
@@ -22,73 +23,7 @@ use xabelfish_unix_socket::{
     unix_socket_client::UnixSocketClient, unix_socket_server::UnixSocketServer,
 };
 
-use crate::max_sized_deque::RoughlySizeConstraintDeque;
-
-struct ListenerPidAndSockPath<T>
-where
-    T: Clone,
-{
-    process: Pid,
-    socket_path: String,
-    extra: T,
-}
-
-impl<T> ListenerPidAndSockPath<T>
-where
-    T: Clone,
-{
-    pub fn none() -> Option<Self> {
-        None
-    }
-
-    pub fn create_process(exec_path: PathBuf, extra: T) -> (UnixSocketServer, Self) {
-        let (mut translate_listener, socket_path) =
-            UnixSocketServer::create().expect("Failed to create control socket for translate");
-
-        let process = Command::new(exec_path.as_os_str())
-            .arg("--socket-path")
-            .arg(socket_path.clone())
-            .spawn()
-            .expect("Failed to run translate");
-
-        (
-            translate_listener,
-            Self {
-                process: (Pid::from_child(&process)),
-                extra: (extra),
-                socket_path: (socket_path),
-            },
-        )
-    }
-
-    pub fn extra(&self) -> T {
-        self.extra.clone()
-    }
-
-    pub fn change_process(&mut self, exec_path: PathBuf, new_extra: T) {
-        self.kill(false);
-
-        let socket_path = self.socket_path.clone();
-
-        let process = Command::new(exec_path.as_os_str())
-            .arg("--socket-path")
-            .arg(socket_path.clone())
-            .spawn()
-            .expect("Failed to run translate");
-
-        self.process = Pid::from_child(&process);
-        self.extra = new_extra;
-    }
-
-    pub fn kill(&mut self, sigkill: bool) -> rustix::io::Result<()> {
-        kill_process(
-            self.process,
-            if sigkill { Signal::KILL } else { Signal::TERM },
-        )?;
-
-        Ok(())
-    }
-}
+use crate::{listener_pid_and_sock_path::ListenerPidAndSockPath, max_sized_deque::RoughlySizeConstraintDeque};
 
 pub struct XabelFishEngine {
     started: bool,
@@ -151,7 +86,7 @@ impl XabelFishEngine {
         let exec_path = self.get_translate_executable_path();
 
         let (mut translate_listener, process_info) =
-            ListenerPidAndSockPath::create_process(exec_path, "deepL".to_string());
+            ListenerPidAndSockPath::create_with_process(exec_path, "deepL".to_string());
         let translation_tw = self.translation_tw.clone();
         self.translate_process = Some(process_info);
 
@@ -205,7 +140,7 @@ impl XabelFishEngine {
         let exec_path = self.get_ocr_executable_path();
 
         let (mut ocr_listener, ocr_process_info) =
-            ListenerPidAndSockPath::create_process(exec_path, "tesseract".to_string());
+            ListenerPidAndSockPath::create_with_process(exec_path, "tesseract".to_string());
 
         self.ocr_process = Some(ocr_process_info);
 
@@ -258,7 +193,7 @@ impl XabelFishEngine {
     fn start_capture(&mut self) {
         let exec_path = self.get_executable(PathBuf::from("xabelfish_cont_capture"));
         let (mut cont_capture_clistener, cont_capture_info) =
-            ListenerPidAndSockPath::create_process(exec_path, ());
+            ListenerPidAndSockPath::create_with_process(exec_path, ());
 
         self.cont_capture_process = Some(cont_capture_info);
 
