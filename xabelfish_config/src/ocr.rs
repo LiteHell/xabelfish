@@ -9,11 +9,17 @@ pub enum OcrType {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct TesseractConfig {
+    #[serde(default = "default_data_lang")]
     pub data_lang: String,
     pub dpi: Option<i32>,
     pub psm: Option<i32>,
     pub oem: Option<i32>,
+    #[serde(default = "HashMap::new")]
     pub config_variables: HashMap<String, String>,
+}
+
+fn default_data_lang() -> String {
+    "jpn".to_string()
 }
 
 impl TesseractConfig {

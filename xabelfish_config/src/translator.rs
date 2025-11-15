@@ -1,4 +1,3 @@
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
@@ -8,7 +7,12 @@ pub enum TranslatorType {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DeepLConfig {
+    #[serde(default = "default_api_key")]
     pub api_key: String,
+}
+
+fn default_api_key() -> String {
+    "PUT_API_KEY_HERE".to_string()
 }
 
 impl DeepLConfig {

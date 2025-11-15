@@ -31,6 +31,24 @@ fn main() {
         writeln!(&mut stdout, "Translation");
 
         stdout.set_color(&body_color_sepc);
-        writeln!(&mut stdout, "{}", i);
+        match i {
+            xabelfish_engine::XabelFishTranslation::Positioned(positioned_translations) => {
+                for translation in positioned_translations {
+                    writeln!(
+                        &mut stdout,
+                        "position: coord={:#?}, w={}, h={}, x={}, y={}",
+                        translation.coordinate_system,
+                        translation.width,
+                        translation.height,
+                        translation.x,
+                        translation.y,
+                    );
+                    writeln!(&mut stdout, "{}", translation.text);
+                }
+            }
+            xabelfish_engine::XabelFishTranslation::String(text) => {
+                writeln!(&mut stdout, "{}", text);
+            }
+        }
     }
 }

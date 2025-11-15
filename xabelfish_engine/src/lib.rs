@@ -21,12 +21,12 @@ use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 use crate::{executable_paths::{get_cont_capture, get_ocr, get_translator}, listener_pid_and_sock_path::ListenerPidAndSockPath, max_sized_deque::RoughlySizeConstraintDeque};
 
 pub struct XabelFishPositionedTranslation {
-    coordinate_system: OcrZeroCoordinatePosition,
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
-    text: String
+    pub coordinate_system: OcrZeroCoordinatePosition,
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
+    pub text: String
 }
 
 pub enum XabelFishTranslation {
