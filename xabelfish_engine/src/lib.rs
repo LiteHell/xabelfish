@@ -58,6 +58,7 @@ impl XabelFishEngine {
         self.start_capture();
         self.start_ocr();
         self.start_translate();
+        self.start_heartbeat();
     }
 
     fn start_heartbeat(&mut self) {
