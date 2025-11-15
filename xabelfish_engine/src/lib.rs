@@ -13,12 +13,26 @@ use std::{
 use xabelfish_config::{XabelFishEngineConfig, ocr::OcrType, translator::TranslatorType};
 use xabelfish_socket_protocol::{
     cont_capture::ContinuousCaptureMessage,
-    ocr::{OcrMessage, OcrRequestBody},
+    ocr::{OcrMessage, OcrRequestBody, OcrZeroCoordinatePosition},
     translate::TranslateMessage,
 };
 use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 
 use crate::{executable_paths::{get_cont_capture, get_ocr, get_translator}, listener_pid_and_sock_path::ListenerPidAndSockPath, max_sized_deque::RoughlySizeConstraintDeque};
+
+pub struct XabelFishPositionedTranslation {
+    coordinate_system: OcrZeroCoordinatePosition,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    text: String
+}
+
+pub enum XabelFishTranslation {
+    String(String),
+    Positioned(Vec<XabelFishPositionedTranslation>)
+}
 
 pub struct XabelFishEngine {
     started: bool,
@@ -26,14 +40,14 @@ pub struct XabelFishEngine {
     cont_capture_process: Arc<RwLock<Option<ListenerPidAndSockPath<()>>>>,
     ocr_process: Arc<RwLock<Option<ListenerPidAndSockPath<OcrType>>>>,
     translate_process: Arc<RwLock<Option<ListenerPidAndSockPath<TranslatorType>>>>,
-    translation_tw: Sender<String>,
+    translation_tw: Sender<XabelFishTranslation>,
     image_stack: Arc<RoughlySizeConstraintDeque<ContinuousCaptureMessage>>,
-    ocr_stack: Arc<RoughlySizeConstraintDeque<String>>,
+    ocr_stack: Arc<RoughlySizeConstraintDeque<OcrMessage>>,
 }
 
 impl XabelFishEngine {
 
-    pub fn new(translation_tw: &mut mpsc::Sender<String>) -> Self {
+    pub fn new(translation_tw: &mut mpsc::Sender<XabelFishTranslation>) -> Self {
         
 
         Self {
@@ -138,7 +152,13 @@ impl XabelFishEngine {
                     translate_socket
                         .send(&TranslateMessage::TranslationRequest(xabelfish_socket_protocol::translate::TranslationRequestBody  {
                             config: XabelFishEngineConfig::get_config().get_translator_config_string(),
-                            texts: vec![ocr_text],
+                            texts: match &ocr_text {
+                                OcrMessage::OcrBoundedBoxText(ocr_response) => {
+                                    ocr_response.into_iter().map(|i| i.text.clone()).collect()
+                                },
+                                OcrMessage::OcrTextResponseBody(text) => vec![text.clone()],
+                                _ => panic!("Server can't send request message back")
+                            },
                             dst: String::from("ko"),
                             src:  xabelfish_socket_protocol::translate::TranslateSourceLanguage::Automatic
                         }))
@@ -158,8 +178,26 @@ impl XabelFishEngine {
 
                     match response {
                         TranslateMessage::TranslationResponse(strings) => {
-                            translation_tw.send(strings[0].clone());
-                        }
+                            if matches!(ocr_text, OcrMessage::OcrTextResponseBody(_)) {
+                                translation_tw.send(XabelFishTranslation::String(strings[0].to_string())).expect("Failed to send translation");
+                            } else if let OcrMessage::OcrBoundedBoxText(ocr_response) = ocr_text {
+                                let mut index = 0;
+                                translation_tw.send(XabelFishTranslation::Positioned(
+                                    ocr_response.into_iter().map(|i| {
+                                        index += 1;
+                                        
+                                        XabelFishPositionedTranslation {
+                                        coordinate_system: i.coordinate_system,
+                                        height: i.height,
+                                        text: strings[index].to_string(),
+                                        width: i.width,
+                                        x: i.x,
+                                        y: i.y
+                                    }}).collect()
+                                )).expect("Failed to send translation");
+                            }
+                        },
+
                         _ => continue,
                     }
                 }
@@ -215,12 +253,7 @@ impl XabelFishEngine {
                         }
                     };
 
-                    match response {
-                        OcrMessage::OcrTextResponseBody(text) => {
-                            ocr_stack.push(text);
-                        }
-                        _ => todo!("not supported yet..."),
-                    }
+                    ocr_stack.push(response);
                 }
             }
         });

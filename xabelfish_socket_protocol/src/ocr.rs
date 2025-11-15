@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OcrRequestBody {
     pub config: String,
     pub image_type: String,
     pub image_bytes: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum OcrZeroCoordinatePosition {
     LeftTop,
     LeftBottom,
@@ -15,7 +15,7 @@ pub enum OcrZeroCoordinatePosition {
     RightBottom,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct OcrBoundedBoxText {
     pub coordinate_system: OcrZeroCoordinatePosition,
     pub x: u32,
@@ -25,7 +25,7 @@ pub struct OcrBoundedBoxText {
     pub text: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum OcrMessage {
     OcrRequest(OcrRequestBody),
     OcrTextResponseBody(String),
