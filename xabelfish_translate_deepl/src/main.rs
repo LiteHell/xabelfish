@@ -56,7 +56,11 @@ fn main() {
                 .unwrap();
 
                 let http_response = http_client
-                    .post("https://api-free.deepl.com/v2/translate")
+                    .post(if config.pro_api {
+                        "https://api.deepl.com/v2/translate"
+                    } else {
+                        "https://api-free.deepl.com/v2/translate"
+                    })
                     .header(
                         "Authorization",
                         format!("DeepL-Auth-Key {}", config.api_key),

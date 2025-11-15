@@ -7,11 +7,13 @@ pub enum TranslatorType {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct DeepLConfig {
-    #[serde(default = "default_api_key")]
+    #[serde(default = "default_deepl_api_key")]
     pub api_key: String,
+    #[serde(default)]
+    pub pro_api: bool,
 }
 
-fn default_api_key() -> String {
+fn default_deepl_api_key() -> String {
     "PUT_API_KEY_HERE".to_string()
 }
 
@@ -22,7 +24,8 @@ impl DeepLConfig {
 
     pub fn default() -> Self {
         Self {
-            api_key: "PUT_API_KEY_HERE".to_string(),
+            api_key: default_deepl_api_key(),
+            pro_api: false,
         }
     }
 }
