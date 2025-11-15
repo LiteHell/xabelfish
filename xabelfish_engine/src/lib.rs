@@ -3,25 +3,20 @@ mod listener_pid_and_sock_path;
 mod executable_paths;
 
 use std::{
-    env::current_exe,
-    path::{Path, PathBuf},
-    process::{Child, Command},
+    path::Path,
     sync::{
         Arc, RwLock, atomic::{AtomicBool, Ordering}, mpsc::{self, Sender}
     },
     thread, time::Duration,
 };
 
-use rustix::process::{Pid, Signal, kill_process};
 use xabelfish_config::{XabelFishEngineConfig, ocr::OcrType, translator::TranslatorType};
 use xabelfish_socket_protocol::{
     cont_capture::ContinuousCaptureMessage,
     ocr::{OcrMessage, OcrRequestBody},
     translate::TranslateMessage,
 };
-use xabelfish_unix_socket::{
-    unix_socket_client::UnixSocketClient, unix_socket_server::UnixSocketServer,
-};
+use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 
 use crate::{executable_paths::{get_cont_capture, get_ocr, get_translator}, listener_pid_and_sock_path::ListenerPidAndSockPath, max_sized_deque::RoughlySizeConstraintDeque};
 
@@ -90,14 +85,22 @@ impl XabelFishEngine {
 
                     break;
                 } else {
-                    let ocr_type = {
-                        ocr_process.read().unwrap().as_ref().map(|i| i.extra())
+                    let (latest_ocr_type, latest_translator_type) = { let config = XabelFishEngineConfig::get_config();
+                        (config.ocr_type, config.translator_type)
                     };
-                    let translate_type = {
-                        translate_process.read().unwrap().as_ref().map(|i| i.extra())
-                    };
-                    
-                    // TO-DO: change process here
+
+                    let mut ocr_process = ocr_process.write().unwrap();
+                    let mut translate_process = translate_process.write().unwrap();
+                    if let Some(ocr_process) = ocr_process.as_mut() {
+                        if ocr_process.extra() != latest_ocr_type {
+                        ocr_process.change_process(get_ocr(), latest_ocr_type);
+                        }
+                    }
+                    if let Some(translate_process) = translate_process.as_mut() {
+                        if translate_process.extra() != latest_translator_type {
+                        translate_process.change_process(get_ocr(), latest_translator_type);
+                        }
+                    }
                 }
 
                 thread::sleep(Duration::from_millis(100));

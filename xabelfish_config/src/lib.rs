@@ -1,10 +1,10 @@
 pub mod ocr;
 pub mod translator;
 
-use std::{collections::HashMap, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 use dirs::config_dir;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     ocr::{OcrType, TesseractConfig},

@@ -3,7 +3,7 @@ use std::path::Path;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use xabelfish_config::translator::DeepLConfig;
-use xabelfish_socket_protocol::translate::{TranslateMessage, TranslateSourceLanguage};
+use xabelfish_socket_protocol::translate::TranslateMessage;
 use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 
 #[derive(Parser, Debug)]

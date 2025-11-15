@@ -21,7 +21,7 @@ where
     }
 
     pub fn create_with_process(exec_path: PathBuf, extra: T) -> (UnixSocketServer, Self) {
-        let (mut translate_listener, socket_path) =
+        let (translate_listener, socket_path) =
             UnixSocketServer::create().expect("Failed to create control socket for translate");
 
         let process = Command::new(exec_path.as_os_str())
