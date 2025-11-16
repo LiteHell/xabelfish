@@ -24,16 +24,21 @@ fn main() {
         specs.set_fg(None).set_bg(None);
         specs
     };
+    let position_color_sepc = {
+        let mut specs: ColorSpec = ColorSpec::new();
+        specs.set_fg(Some(Color::White)).set_bg(Some(Color::Yellow));
+        specs
+    };
     for i in rx.iter() {
         let _ = clearscreen::clear();
 
         stdout.set_color(&header_color_spec);
         writeln!(&mut stdout, "Translation");
 
-        stdout.set_color(&body_color_sepc);
         match i {
             xabelfish_engine::XabelFishTranslation::Positioned(positioned_translations) => {
                 for translation in positioned_translations {
+                    stdout.set_color(&position_color_sepc);
                     writeln!(
                         &mut stdout,
                         "position: coord={:#?}, w={}, h={}, x={}, y={}",
@@ -43,10 +48,12 @@ fn main() {
                         translation.x,
                         translation.y,
                     );
+                    stdout.set_color(&body_color_sepc);
                     writeln!(&mut stdout, "{}", translation.text);
                 }
             }
             xabelfish_engine::XabelFishTranslation::String(text) => {
+                stdout.set_color(&body_color_sepc);
                 writeln!(&mut stdout, "{}", text);
             }
         }

@@ -80,7 +80,7 @@ impl XabelFishEngine {
         let ocr_process = self.ocr_process.clone();
         let translate_process = self.translate_process.clone();
         let stopping = self.stopping.clone();
-        
+
         thread::spawn(move || {
             loop {
                 
@@ -103,17 +103,31 @@ impl XabelFishEngine {
                     let (latest_ocr_type, latest_translator_type) = { let config = XabelFishEngineConfig::get_config();
                         (config.ocr_type, config.translator_type)
                     };
-
+                    
+                    let mut cont_capture_process = cont_capture_process.write().unwrap();
                     let mut ocr_process = ocr_process.write().unwrap();
                     let mut translate_process = translate_process.write().unwrap();
+
                     if let Some(ocr_process) = ocr_process.as_mut() {
-                        if ocr_process.extra() != latest_ocr_type {
-                        ocr_process.change_process(get_ocr(), latest_ocr_type);
+                        let is_ocr_dead = !ocr_process.is_alive();
+                        if ocr_process.extra() != latest_ocr_type || is_ocr_dead {
+                            println!("Restarting ocr");
+                            ocr_process.change_process(get_ocr(), latest_ocr_type);
+                        
                         }
                     }
                     if let Some(translate_process) = translate_process.as_mut() {
-                        if translate_process.extra() != latest_translator_type {
-                        translate_process.change_process(get_ocr(), latest_translator_type);
+                        let is_translator_dead =  !translate_process.is_alive();
+                        if translate_process.extra() != latest_translator_type || is_translator_dead {
+                            println!("Restarting translator");
+                            translate_process.change_process(get_translator(), latest_translator_type);
+                        }
+                    }
+                    if let Some(cont_capture_process) = cont_capture_process.as_mut() {
+                        let is_cont_capture_dead = !cont_capture_process.is_alive();
+                        if is_cont_capture_dead {
+                            println!("Restarting cont capture");
+                            cont_capture_process.change_process(get_cont_capture(), ());
                         }
                     }
                 }
@@ -181,19 +195,19 @@ impl XabelFishEngine {
                             if matches!(ocr_text, OcrMessage::OcrTextResponseBody(_)) {
                                 translation_tw.send(XabelFishTranslation::String(strings[0].to_string())).expect("Failed to send translation");
                             } else if let OcrMessage::OcrBoundedBoxText(ocr_response) = ocr_text {
-                                let mut index = 0;
+                                let mut strings = strings.clone();
                                 translation_tw.send(XabelFishTranslation::Positioned(
                                     ocr_response.into_iter().map(|i| {
-                                        index += 1;
                                         
                                         XabelFishPositionedTranslation {
-                                        coordinate_system: i.coordinate_system,
-                                        height: i.height,
-                                        text: strings[index].to_string(),
-                                        width: i.width,
-                                        x: i.x,
-                                        y: i.y
-                                    }}).collect()
+                                            coordinate_system: i.coordinate_system,
+                                            height: i.height,
+                                            text: strings.remove(0),
+                                            width: i.width,
+                                            x: i.x,
+                                            y: i.y
+                                        }
+                                    }).collect()
                                 )).expect("Failed to send translation");
                             }
                         },

@@ -1,5 +1,6 @@
 mod screen_capture;
 
+use std::fs::File;
 use std::io::*;
 use std::path::Path;
 use std::sync::mpsc;
@@ -19,11 +20,16 @@ use crate::screen_capture::pipewire::pipewire;
 struct CommandArgs {
     #[arg(short, long)]
     socket_path: String,
+    #[arg(short, long)]
+    lock_file: String,
 }
 
 fn main() {
     let args = CommandArgs::parse();
     let socket_path = Path::new(&args.socket_path);
+
+    let lockfile = File::open(args.lock_file).expect("Failed to open lockfile");
+    lockfile.lock();
 
     'connect_control_server: loop {
         let mut socket = match UnixSocketClient::connect(&socket_path) {

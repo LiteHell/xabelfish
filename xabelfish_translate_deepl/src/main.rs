@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{fs::File, path::Path};
 
 use clap::Parser;
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,8 @@ use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
 struct CommandArgs {
     #[arg(short, long)]
     socket_path: String,
+    #[arg(short, long)]
+    lock_file: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -32,6 +34,9 @@ struct DeepLTranslateResponse {
 
 fn main() {
     let args = CommandArgs::parse();
+
+    let lockfile = File::open(args.lock_file).unwrap();
+    lockfile.lock().expect("Failed to get a lock");
 
     let mut client =
         UnixSocketClient::connect(Path::new(&args.socket_path)).expect("Failed to connect socket");

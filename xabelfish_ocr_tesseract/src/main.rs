@@ -1,7 +1,7 @@
 mod tesseract_data_to_paragraph;
 
-use std::io::*;
 use std::path::Path;
+use std::{fs::File, io::*};
 
 use clap::Parser;
 use rusty_tesseract::{Data, Image};
@@ -16,10 +16,15 @@ use crate::tesseract_data_to_paragraph::TesseractParagraph;
 struct CommandArgs {
     #[arg(short, long)]
     socket_path: String,
+    #[arg(short, long)]
+    lock_file: String,
 }
 
 fn main() {
     let args = CommandArgs::parse();
+
+    let lockfile = File::open(args.lock_file).unwrap();
+    lockfile.lock().expect("Failed to get a lock");
 
     let mut client =
         UnixSocketClient::connect(Path::new(&args.socket_path)).expect("Failed to connect socket");
@@ -58,7 +63,7 @@ fn main() {
                         .expect("Failed to perform tesseract ocr");
                     let paragraphs = TesseractParagraph::from_tesseract_data(tesseract_data.data);
 
-                    let responses = paragraphs
+                    let responses: Vec<OcrBoundedBoxText> = paragraphs
                         .into_iter()
                         .map(|i| OcrBoundedBoxText {
                             coordinate_system: OcrZeroCoordinatePosition::RightTop,

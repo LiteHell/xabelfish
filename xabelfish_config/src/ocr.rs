@@ -7,7 +7,7 @@ pub enum OcrType {
     Tesseract,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TesseractConfig {
     #[serde(default = "default_data_lang")]
     pub data_lang: String,
