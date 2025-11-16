@@ -16,6 +16,8 @@ pub struct TesseractConfig {
     pub oem: Option<i32>,
     #[serde(default = "HashMap::new")]
     pub config_variables: HashMap<String, String>,
+    #[serde(default)]
+    pub positioned_ocr: bool,
 }
 
 fn default_data_lang() -> String {
@@ -34,6 +36,7 @@ impl TesseractConfig {
             oem: Some(3),
             psm: Some(3),
             config_variables: HashMap::new(),
+            positioned_ocr: false,
         }
     }
 }
