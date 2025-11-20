@@ -2,7 +2,7 @@ use std::sync::mpsc;
 
 use std::io::Write;
 use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
-use xabelfish_engine::XabelFishEngine;
+use xabelfish_engine_lib::XabelFishEngine;
 
 fn main() {
     let (mut tx, rx) = mpsc::channel();
@@ -36,7 +36,7 @@ fn main() {
         writeln!(&mut stdout, "Translation");
 
         match i {
-            xabelfish_engine::XabelFishTranslation::Positioned(positioned_translations) => {
+            xabelfish_engine_lib::XabelFishTranslation::Positioned(positioned_translations) => {
                 for translation in positioned_translations {
                     stdout.set_color(&position_color_sepc);
                     writeln!(
@@ -52,7 +52,7 @@ fn main() {
                     writeln!(&mut stdout, "{}", translation.text);
                 }
             }
-            xabelfish_engine::XabelFishTranslation::String(text) => {
+            xabelfish_engine_lib::XabelFishTranslation::String(text) => {
                 stdout.set_color(&body_color_sepc);
                 writeln!(&mut stdout, "{}", text);
             }
