@@ -7,7 +7,7 @@ use clap::Parser;
 use rusty_tesseract::{Data, Image};
 use xabelfish_config::ocr::TesseractConfig;
 use xabelfish_socket_protocol::ocr::{OcrBoundedBoxText, OcrMessage, OcrZeroCoordinatePosition};
-use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
+use xabelfish_unix_socket::UnixSocketClient;
 
 use crate::tesseract_data_to_paragraph::TesseractParagraph;
 

@@ -4,7 +4,7 @@ use clap::Parser;
 use serde::{Deserialize, Serialize};
 use xabelfish_config::translator::DeepLConfig;
 use xabelfish_socket_protocol::translate::TranslateMessage;
-use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
+use xabelfish_unix_socket::UnixSocketClient;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

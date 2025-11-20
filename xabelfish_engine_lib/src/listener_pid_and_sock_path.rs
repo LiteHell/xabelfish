@@ -6,7 +6,7 @@ use std::{
 
 use rustix::process::{Pid, Signal, kill_process};
 use tempfile::{NamedTempFile, tempfile};
-use xabelfish_unix_socket::unix_socket_server::UnixSocketServer;
+use xabelfish_unix_socket::UnixSocketServer;
 
 pub(super) struct ListenerPidAndSockPath<T>
 where

@@ -7,7 +7,7 @@ use std::{
 
 use tempfile::NamedTempFile;
 
-use crate::unix_socket_client::UnixSocketClient;
+use crate::UnixSocketClient;
 
 pub struct UnixSocketServer {
     listener: UnixListener,

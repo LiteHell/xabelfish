@@ -16,7 +16,7 @@ use xabelfish_socket_protocol::{
     ocr::{OcrMessage, OcrRequestBody, OcrZeroCoordinatePosition},
     translate::TranslateMessage,
 };
-use xabelfish_unix_socket::unix_socket_client::UnixSocketClient;
+use xabelfish_unix_socket::UnixSocketClient;
 
 use crate::{executable_paths::{get_cont_capture, get_ocr, get_translator}, listener_pid_and_sock_path::ListenerPidAndSockPath, max_sized_deque::RoughlySizeConstraintDeque};
 
