@@ -1,0 +1,28 @@
+
+export component MainWindow inherits Window {
+    in property <string> translation: "Hello, XabelFish!";
+    in property <length> fontSize: 30px;
+    preferred-height: 200px;
+    preferred-width: 400px;
+    always-on-top: true;
+
+
+    Text {
+        text: translation;
+        font-size: fontSize;
+    }
+
+    MenuBar {
+        Menu {
+            title: "Translation";
+            MenuItem {
+                title: "Start";
+                callback start_translation;
+            }
+            MenuItem {
+                title: "Stop";
+                callback stop_translation;
+            }
+        }
+    }
+}
