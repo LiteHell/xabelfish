@@ -3,16 +3,14 @@ mod listener_pid_and_sock_path;
 mod executable_paths;
 
 use std::{
-    path::Path,
-    sync::{
+    io::Cursor, path::Path, sync::{
         Arc, RwLock, atomic::{AtomicBool, Ordering}, mpsc::{self, Sender}
-    },
-    thread, time::Duration,
+    }, thread, time::Duration
 };
 
 use xabelfish_config::{XabelFishEngineConfig, ocr::OcrType, translator::TranslatorType};
 use xabelfish_socket_protocol::{
-    cont_capture::ContinuousCaptureMessage,
+    cont_capture::{ContinuousCaptureMessage, ContinuousCaptureMessageType},
     ocr::{OcrMessage, OcrRequestBody, OcrZeroCoordinatePosition},
     translate::TranslateMessage,
 };
@@ -73,6 +71,28 @@ impl XabelFishEngine {
         self.start_ocr();
         self.start_translate();
         self.start_heartbeat();
+    }
+
+    pub fn get_uncropped_image(&self) -> Option<image::DynamicImage> {
+        let image_stack = self.image_stack.clone();
+
+        let image = image_stack.last();
+        if let Some(image) = image {
+            match image.message_type {
+                ContinuousCaptureMessageType::CaptureImageBytes => {
+                    let dynamic_image =
+                        image::ImageReader::new(Cursor::new(image.extra_bytes))
+                            .with_guessed_format()
+                            .unwrap()
+                            .decode()
+                            .unwrap();
+                    Some(dynamic_image)
+                }
+                _ => None
+            }
+        } else { 
+            None
+        }
     }
 
     fn start_heartbeat(&mut self) {

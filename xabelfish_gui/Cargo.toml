@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+image = "0.25.9"
 slint = "1.14.1"
 xabelfish_config = { version = "0.1.0", path = "../xabelfish_config" }
 xabelfish_engine_lib = { version = "0.1.0", path = "../xabelfish_engine_lib" }
